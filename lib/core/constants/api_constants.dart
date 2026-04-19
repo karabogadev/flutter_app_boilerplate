@@ -1,5 +1,16 @@
+/// API constants. Override BASE_URL via --dart-define or --dart-define-from-file.
+///
+/// Usage:
+///   flutter run --dart-define-from-file=.env.dev
+///   flutter build apk --dart-define-from-file=.env.prod
+///
+/// .env.dev example:
+///   { "BASE_URL": "https://dev-api.example.com" }
 abstract class ApiConstants {
-  static const String baseUrl = 'https://api.example.com';
+  static const String baseUrl = String.fromEnvironment(
+    'BASE_URL',
+    defaultValue: 'https://api.example.com',
+  );
 
   // Endpoints
   static const String login = '/auth/login';
