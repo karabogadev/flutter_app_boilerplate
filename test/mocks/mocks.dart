@@ -1,5 +1,7 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_app_boilerplate/core/cache/cache_manager.dart';
+import 'package:flutter_app_boilerplate/features/auth/data/models/user_model.dart';
+import 'package:flutter_app_boilerplate/core/cache/secure_cache_manager.dart';
 import 'package:flutter_app_boilerplate/core/database/hive_manager.dart';
 import 'package:flutter_app_boilerplate/core/localization/localization_manager.dart';
 import 'package:flutter_app_boilerplate/core/network/dio_client.dart';
@@ -21,47 +23,38 @@ import 'package:flutter_app_boilerplate/features/settings/presentation/bloc/them
 
 // Core Mocks
 class MockCacheManager extends Mock implements CacheManager {}
-
+class MockSecureCacheManager extends Mock implements SecureCacheManager {}
 class MockDioClient extends Mock implements DioClient {}
-
 class MockLocalizationManager extends Mock implements LocalizationManager {}
 
 // Offline-First Mocks
 class MockHiveManager extends Mock implements HiveManager {}
-
 class MockConnectivityService extends Mock implements ConnectivityService {}
-
 class MockSyncQueue extends Mock implements SyncQueue {}
-
 class MockOfflineManager extends Mock implements OfflineManager {}
-
 class MockConnectivityCubit extends Mock implements ConnectivityCubit {}
 
 // Auth Feature Mocks
 class MockAuthRepository extends Mock implements AuthRepository {}
-
 class MockAuthRemoteDataSource extends Mock implements AuthRemoteDataSource {}
-
 class MockAuthLocalDataSource extends Mock implements AuthLocalDataSource {}
-
 class MockLoginUser extends Mock implements LoginUser {}
-
 class MockRegisterUser extends Mock implements RegisterUser {}
-
 class MockLogoutUser extends Mock implements LogoutUser {}
-
 class MockGetCurrentUser extends Mock implements GetCurrentUser {}
-
 class MockAuthBloc extends Mock implements AuthBloc {}
 
 // Settings Feature Mocks
 class MockThemeCubit extends Mock implements ThemeCubit {}
-
 class MockLocaleCubit extends Mock implements LocaleCubit {}
 
-// Register fallback values for mocktail
 void registerFallbackValues() {
   registerFallbackValue(const NoParams());
   registerFallbackValue(const LoginParams(email: '', password: ''));
   registerFallbackValue(const RegisterParams(email: '', password: ''));
+  registerFallbackValue(UserModel(
+    id: '',
+    email: '',
+    createdAt: DateTime(2024),
+  ));
 }

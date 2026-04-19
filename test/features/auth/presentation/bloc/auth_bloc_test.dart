@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_app_boilerplate/core/error/failures.dart';
 import 'package:flutter_app_boilerplate/features/auth/domain/usecases/login_user.dart';
+import 'package:flutter_app_boilerplate/features/auth/domain/usecases/register_user.dart';
 import 'package:flutter_app_boilerplate/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_app_boilerplate/features/auth/presentation/bloc/auth_event.dart';
 import 'package:flutter_app_boilerplate/features/auth/presentation/bloc/auth_state.dart';
@@ -61,10 +62,7 @@ void main() {
         email: tEmail,
         password: tPassword,
       )),
-      expect: () => [
-        const AuthLoading(),
-        Authenticated(tUser),
-      ],
+      expect: () => [const AuthLoading(), Authenticated(tUser)],
       verify: (_) {
         verify(() => mockLoginUser(const LoginParams(
               email: tEmail,
@@ -76,8 +74,8 @@ void main() {
     blocTest<AuthBloc, AuthState>(
       'emits [AuthLoading, AuthError] when login fails',
       build: () {
-        when(() => mockLoginUser(any()))
-            .thenAnswer((_) async => const Left(ServerFailure(message: 'Invalid credentials')));
+        when(() => mockLoginUser(any())).thenAnswer(
+            (_) async => const Left(ServerFailure(message: 'Invalid credentials')));
         return bloc;
       },
       act: (bloc) => bloc.add(const LoginEvent(
@@ -91,6 +89,49 @@ void main() {
     );
   });
 
+  group('RegisterEvent', () {
+    const tEmail = 'new@example.com';
+    const tPassword = 'password123';
+    const tName = 'New User';
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, Authenticated] when register succeeds',
+      build: () {
+        when(() => mockRegisterUser(any()))
+            .thenAnswer((_) async => Right(tUser));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const RegisterEvent(
+        email: tEmail,
+        password: tPassword,
+        name: tName,
+      )),
+      expect: () => [const AuthLoading(), Authenticated(tUser)],
+      verify: (_) {
+        verify(() => mockRegisterUser(const RegisterParams(
+              email: tEmail,
+              password: tPassword,
+              name: tName,
+            ))).called(1);
+      },
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, AuthError] when register fails',
+      build: () {
+        when(() => mockRegisterUser(any())).thenAnswer(
+            (_) async => const Left(ServerFailure(message: 'Email taken')));
+        return bloc;
+      },
+      act: (bloc) =>
+          bloc.add(const RegisterEvent(email: tEmail, password: tPassword)),
+      expect: () => [
+        const AuthLoading(),
+        const AuthError('Email taken'),
+      ],
+    );
+  });
+
   group('LogoutEvent', () {
     blocTest<AuthBloc, AuthState>(
       'emits [AuthLoading, Unauthenticated] when logout succeeds',
@@ -100,9 +141,20 @@ void main() {
         return bloc;
       },
       act: (bloc) => bloc.add(const LogoutEvent()),
+      expect: () => [const AuthLoading(), const Unauthenticated()],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, AuthError] when logout fails',
+      build: () {
+        when(() => mockLogoutUser(any())).thenAnswer(
+            (_) async => const Left(CacheFailure(message: 'Clear failed')));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const LogoutEvent()),
       expect: () => [
         const AuthLoading(),
-        const Unauthenticated(),
+        const AuthError('Clear failed'),
       ],
     );
   });
@@ -116,24 +168,30 @@ void main() {
         return bloc;
       },
       act: (bloc) => bloc.add(const CheckAuthStatusEvent()),
-      expect: () => [
-        const AuthLoading(),
-        Authenticated(tUser),
-      ],
+      expect: () => [const AuthLoading(), Authenticated(tUser)],
     );
 
     blocTest<AuthBloc, AuthState>(
       'emits [AuthLoading, Unauthenticated] when user is not logged in',
       build: () {
-        when(() => mockGetCurrentUser(any()))
-            .thenAnswer((_) async => const Left(CacheFailure(message: 'No user found')));
+        when(() => mockGetCurrentUser(any())).thenAnswer(
+            (_) async =>
+                const Left(CacheFailure(message: 'No user found')));
         return bloc;
       },
       act: (bloc) => bloc.add(const CheckAuthStatusEvent()),
-      expect: () => [
-        const AuthLoading(),
-        const Unauthenticated(),
-      ],
+      expect: () => [const AuthLoading(), const Unauthenticated()],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, Unauthenticated] when getCurrentUser returns null user',
+      build: () {
+        when(() => mockGetCurrentUser(any()))
+            .thenAnswer((_) async => const Right(null));
+        return bloc;
+      },
+      act: (bloc) => bloc.add(const CheckAuthStatusEvent()),
+      expect: () => [const AuthLoading(), const Unauthenticated()],
     );
   });
 }
