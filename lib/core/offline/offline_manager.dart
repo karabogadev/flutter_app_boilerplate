@@ -69,6 +69,9 @@ class OfflineManager {
     await _hiveManager.init();
     await _connectivityService.init();
 
+    // Reset any operations left in-progress from a previous session.
+    await _syncQueue.recoverInProgressOperations();
+
     // Listen to connectivity changes
     _connectivitySubscription = _connectivityService.onStatusChanged.listen(
       _handleConnectivityChange,

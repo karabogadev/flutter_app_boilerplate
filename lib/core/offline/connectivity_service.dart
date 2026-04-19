@@ -163,6 +163,8 @@ class ConnectivityService {
           return 'Other';
         case ConnectivityResult.none:
           return 'None';
+        case ConnectivityResult.satellite:
+          return 'Satellite';
       }
     }).toSet();
 

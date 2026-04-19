@@ -1,35 +1,14 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 
 import '../database/hive_manager.dart';
+import '../error/exceptions.dart';
 import '../network/dio_client.dart';
 import 'sync_operation.dart';
 import 'sync_status.dart';
 
-/// Callback for when sync queue changes
-typedef SyncQueueCallback = void Function(int pendingCount);
-
-/// Manages the queue of operations to be synced when online.
-///
-/// Usage:
-/// ```dart
-/// final queue = SyncQueue.instance;
-///
-/// // Add operation to queue
-/// queue.addOperation(
-///   operationType: SyncOperationType.create,
-///   entityType: 'user',
-///   entityId: '123',
-///   data: {'name': 'John'},
-///   endpoint: '/api/users',
-/// );
-///
-/// // Process queue when online
-/// await queue.processQueue();
-/// ```
 class SyncQueue {
   SyncQueue._();
 
@@ -42,35 +21,63 @@ class SyncQueue {
   bool _isProcessing = false;
   final _onQueueChanged = StreamController<int>.broadcast();
 
-  /// Stream of queue size changes
   Stream<int> get onQueueChanged => _onQueueChanged.stream;
-
-  /// Whether the queue is currently being processed
   bool get isProcessing => _isProcessing;
 
-  /// Get the sync queue box
   Box<SyncOperation> get _box => _hiveManager.getSyncQueueBox();
 
-  /// Get all pending operations
+  // ─────────────────────────────────────────────────────────────
+  // INITIALIZATION
+  // ─────────────────────────────────────────────────────────────
+
+  /// Recover any operations left in-progress from a previous app session
+  /// (e.g., force-kill mid-sync). Resets them to pending so they retry.
+  Future<void> recoverInProgressOperations() async {
+    final stuckOps = _box.values
+        .where((op) => op.status == SyncStatus.inProgress)
+        .toList();
+
+    for (final op in stuckOps) {
+      op.status = SyncStatus.pending;
+      await op.save();
+    }
+
+    if (stuckOps.isNotEmpty) {
+      debugPrint('SyncQueue: recovered ${stuckOps.length} stuck in-progress ops');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // QUERIES
+  // ─────────────────────────────────────────────────────────────
+
   List<SyncOperation> get pendingOperations {
+    final now = DateTime.now();
     return _box.values
-        .where((op) => op.status == SyncStatus.pending)
+        .where((op) =>
+            op.status == SyncStatus.pending && _isReadyForRetry(op, now))
         .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
-  /// Get count of pending operations
-  int get pendingCount {
-    return _box.values.where((op) => op.status == SyncStatus.pending).length;
+  int get pendingCount =>
+      _box.values.where((op) => op.status == SyncStatus.pending).length;
+
+  List<SyncOperation> get allOperations =>
+      _box.values.toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+  /// Exponential backoff: 2^retryCount seconds (2s, 4s, 8s).
+  bool _isReadyForRetry(SyncOperation op, DateTime now) {
+    if (op.retryCount == 0 || op.lastAttemptAt == null) return true;
+    final backoff = Duration(seconds: 1 << op.retryCount);
+    return now.isAfter(op.lastAttemptAt!.add(backoff));
   }
 
-  /// Get all operations (including completed/failed)
-  List<SyncOperation> get allOperations {
-    return _box.values.toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-  }
+  // ─────────────────────────────────────────────────────────────
+  // MUTATIONS
+  // ─────────────────────────────────────────────────────────────
 
-  /// Add a new operation to the sync queue
   Future<SyncOperation> addOperation({
     required SyncOperationType operationType,
     required String entityType,
@@ -90,64 +97,58 @@ class SyncQueue {
     _notifyQueueChanged();
 
     if (kDebugMode) {
-      print('SyncQueue: Added operation ${operation.id} (${operation.operationType})');
+      print('SyncQueue: Added ${operation.id} (${operation.operationType})');
     }
 
     return operation;
   }
 
-  /// Remove an operation from the queue
   Future<void> removeOperation(String id) async {
     await _box.delete(id);
     _notifyQueueChanged();
   }
 
-  /// Clear all completed operations
   Future<void> clearCompleted() async {
-    final completed = _box.values
+    final keys = _box.values
         .where((op) => op.status == SyncStatus.completed)
         .map((op) => op.id)
         .toList();
-
-    for (final id in completed) {
-      await _box.delete(id);
-    }
-
-    if (kDebugMode) {
-      print('SyncQueue: Cleared ${completed.length} completed operations');
-    }
+    await _box.deleteAll(keys);
+    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} completed ops');
   }
 
-  /// Clear all failed operations
   Future<void> clearFailed() async {
-    final failed = _box.values
+    final keys = _box.values
         .where((op) => op.status == SyncStatus.failed)
         .map((op) => op.id)
         .toList();
-
-    for (final id in failed) {
-      await _box.delete(id);
-    }
-
-    if (kDebugMode) {
-      print('SyncQueue: Cleared ${failed.length} failed operations');
-    }
+    await _box.deleteAll(keys);
+    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} failed ops');
   }
 
-  /// Clear stale operations (older than 7 days)
+  Future<void> clearPending() async {
+    final keys = _box.values
+        .where((op) => op.status == SyncStatus.pending)
+        .map((op) => op.id)
+        .toList();
+    await _box.deleteAll(keys);
+    _notifyQueueChanged();
+    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} pending ops');
+  }
+
   Future<void> clearStale() async {
-    final stale = _box.values.where((op) => op.isStale).map((op) => op.id).toList();
-
-    for (final id in stale) {
-      await _box.delete(id);
-    }
-
-    if (kDebugMode) {
-      print('SyncQueue: Cleared ${stale.length} stale operations');
-    }
+    final keys = _box.values
+        .where((op) => op.isStale)
+        .map((op) => op.id)
+        .toList();
+    await _box.deleteAll(keys);
+    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} stale ops');
   }
 
-  /// Process all pending operations in the queue
+  // ─────────────────────────────────────────────────────────────
+  // PROCESSING
+  // ─────────────────────────────────────────────────────────────
+
   Future<SyncResult> processQueue() async {
     if (_isProcessing) {
       return const SyncResult(
@@ -172,95 +173,75 @@ class SyncQueue {
 
       for (final operation in operations) {
         processed++;
-        final success = await _processOperation(operation);
-
-        if (success) {
+        if (await _processOperation(operation)) {
           succeeded++;
         } else {
           failed++;
         }
-
-        _notifyQueueChanged();
+        // Do not notify after every operation — emit once at the end.
       }
+
+      _notifyQueueChanged();
 
       return SyncResult(
         processed: processed,
         succeeded: succeeded,
         failed: failed,
-        message: 'Processed $processed operations: $succeeded succeeded, $failed failed',
+        message:
+            'Processed $processed: $succeeded succeeded, $failed failed',
       );
     } finally {
       _isProcessing = false;
     }
   }
 
-  /// Process a single operation
   Future<bool> _processOperation(SyncOperation operation) async {
     operation.markInProgress();
 
     try {
-      Response<dynamic> response;
-
-      switch (operation.operationType) {
-        case SyncOperationType.create:
-          response = await _dioClient.post(
+      final response = switch (operation.operationType) {
+        SyncOperationType.create => await _dioClient.post<dynamic>(
             operation.endpoint,
             data: operation.payloadAsMap,
-          );
-          break;
-
-        case SyncOperationType.update:
-          response = await _dioClient.put(
+          ),
+        SyncOperationType.update => await _dioClient.put<dynamic>(
             operation.endpoint,
             data: operation.payloadAsMap,
-          );
-          break;
+          ),
+        SyncOperationType.delete => await _dioClient.delete<dynamic>(
+            operation.endpoint,
+          ),
+      };
 
-        case SyncOperationType.delete:
-          response = await _dioClient.delete(operation.endpoint);
-          break;
-      }
-
-      if (response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300) {
+      final statusCode = response.statusCode ?? 0;
+      if (statusCode >= 200 && statusCode < 300) {
         operation.markCompleted();
-
-        if (kDebugMode) {
-          print('SyncQueue: Operation ${operation.id} completed successfully');
-        }
-
         return true;
-      } else {
-        operation.markFailed('Server returned ${response.statusCode}');
-        return false;
-      }
-    } on DioException catch (e) {
-      final errorMessage = e.message ?? 'Network error';
-      operation.markFailed(errorMessage);
-
-      if (kDebugMode) {
-        print('SyncQueue: Operation ${operation.id} failed: $errorMessage');
       }
 
+      operation.markFailed('Server returned $statusCode');
+      return false;
+    } on NetworkException catch (e) {
+      operation.markFailed(e.message);
+      return false;
+    } on ServerException catch (e) {
+      operation.markFailed(e.message);
       return false;
     } catch (e) {
       operation.markFailed(e.toString());
-
-      if (kDebugMode) {
-        print('SyncQueue: Operation ${operation.id} failed: $e');
-      }
-
       return false;
     }
   }
 
-  /// Retry a specific failed operation
+  // ─────────────────────────────────────────────────────────────
+  // RETRY
+  // ─────────────────────────────────────────────────────────────
+
   Future<bool> retryOperation(String id) async {
     final operation = _box.get(id);
-    if (operation == null) return false;
-
-    if (operation.status != SyncStatus.failed) return false;
+    if (operation == null || operation.status != SyncStatus.failed) {
+      return false;
+    }
 
     operation.status = SyncStatus.pending;
     operation.retryCount = 0;
@@ -271,19 +252,23 @@ class SyncQueue {
     return true;
   }
 
-  /// Retry all failed operations
   Future<void> retryAllFailed() async {
-    final failed = _box.values.where((op) => op.status == SyncStatus.failed);
+    final failed =
+        _box.values.where((op) => op.status == SyncStatus.failed).toList();
 
-    for (final operation in failed) {
-      operation.status = SyncStatus.pending;
-      operation.retryCount = 0;
-      operation.errorMessage = null;
-      await operation.save();
+    for (final op in failed) {
+      op.status = SyncStatus.pending;
+      op.retryCount = 0;
+      op.errorMessage = null;
+      await op.save();
     }
 
     _notifyQueueChanged();
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // INTERNALS
+  // ─────────────────────────────────────────────────────────────
 
   void _notifyQueueChanged() {
     _onQueueChanged.add(pendingCount);
@@ -294,7 +279,6 @@ class SyncQueue {
   }
 }
 
-/// Result of processing the sync queue
 class SyncResult {
   final int processed;
   final int succeeded;
