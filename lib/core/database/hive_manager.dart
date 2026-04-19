@@ -7,19 +7,9 @@ import 'hive_boxes.dart';
 
 /// Manages Hive database initialization and provides access to boxes.
 ///
-/// This is a singleton that should be initialized once at app startup
-/// before any database operations are performed.
-///
-/// Usage:
-/// ```dart
-/// await HiveManager.instance.init();
-/// final box = HiveManager.instance.getSyncQueueBox();
-/// ```
+/// Register this via GetIt and call [init] during app startup.
 class HiveManager {
-  HiveManager._();
-
-  static final HiveManager _instance = HiveManager._();
-  static HiveManager get instance => _instance;
+  HiveManager();
 
   bool _isInitialized = false;
 
@@ -42,9 +32,7 @@ class HiveManager {
 
     _isInitialized = true;
 
-    if (kDebugMode) {
-      print('HiveManager: Initialized successfully');
-    }
+    debugPrint('HiveManager: initialized');
   }
 
   /// Register all TypeAdapters for custom objects
@@ -139,9 +127,7 @@ class HiveManager {
       }
     }
 
-    if (kDebugMode) {
-      print('HiveManager: All boxes cleared');
-    }
+    debugPrint('HiveManager: all boxes cleared');
   }
 
   /// Clear a specific box
@@ -157,9 +143,7 @@ class HiveManager {
     await Hive.close();
     _isInitialized = false;
 
-    if (kDebugMode) {
-      print('HiveManager: All boxes closed');
-    }
+    debugPrint('HiveManager: all boxes closed');
   }
 
   /// Delete a box from disk completely
@@ -181,7 +165,7 @@ class HiveManager {
   void _ensureInitialized() {
     if (!_isInitialized) {
       throw StateError(
-        'HiveManager is not initialized. Call HiveManager.instance.init() first.',
+        'HiveManager is not initialized. Call init() first.',
       );
     }
   }

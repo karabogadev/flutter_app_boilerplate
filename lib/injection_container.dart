@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 
 import 'config/routes/app_router.dart';
+import 'config/routes/auth_guard.dart';
 import 'core/cache/cache_manager.dart';
 import 'core/cache/secure_cache_manager.dart';
 import 'core/database/hive_manager.dart';
@@ -32,8 +33,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<CacheManager>(() => CacheManager.instance);
   sl.registerLazySingleton<SecureCacheManager>(() => SecureCacheManager.instance);
   sl.registerLazySingleton<DioClient>(() => DioClient.instance);
-  sl.registerLazySingleton<LocalizationManager>(() => LocalizationManager.instance);
-  sl.registerLazySingleton<AppRouter>(() => AppRouter());
+  sl.registerLazySingleton<LocalizationManager>(() => LocalizationManager(sl()));
 
   //==============================
   // OFFLINE-FIRST
@@ -48,10 +48,10 @@ Future<void> initDependencies() async {
 }
 
 Future<void> _initOfflineFirst() async {
-  sl.registerLazySingleton<HiveManager>(() => HiveManager.instance);
-  sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService.instance);
-  sl.registerLazySingleton<SyncQueue>(() => SyncQueue.instance);
-  sl.registerLazySingleton<OfflineManager>(() => OfflineManager.instance);
+  sl.registerLazySingleton<HiveManager>(() => HiveManager());
+  sl.registerLazySingleton<ConnectivityService>(() => ConnectivityService());
+  sl.registerLazySingleton<SyncQueue>(() => SyncQueue(sl(), sl()));
+  sl.registerLazySingleton<OfflineManager>(() => OfflineManager(sl(), sl(), sl()));
 
   await sl<OfflineManager>().init();
 
@@ -92,6 +92,10 @@ Future<void> _initAuthFeature() async {
         getCurrentUser: sl(),
       ));
 
+  // Guard + Router — registered here so AuthGuard can resolve AuthLocalDataSource.
+  sl.registerLazySingleton<AuthGuard>(() => AuthGuard(sl()));
+  sl.registerLazySingleton<AppRouter>(() => AppRouter(sl()));
+
   // Wire token refresh into DioClient now that auth datasource is available.
   sl<DioClient>().configureTokenRefresh(
     getRefreshToken: () => sl<AuthLocalDataSource>().getRefreshToken(),
@@ -115,5 +119,5 @@ Future<void> _initSettingsFeature() async {
   // registerFactory would create a fresh instance each time sl<ThemeCubit>()
   // is called, silently diverging from the BlocProvider-owned instance.
   sl.registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl()));
-  sl.registerLazySingleton<LocaleCubit>(() => LocaleCubit(sl()));
+  sl.registerLazySingleton<LocaleCubit>(() => LocaleCubit(sl(), sl()));
 }

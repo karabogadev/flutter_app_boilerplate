@@ -1,5 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 
+import 'auth_guard.dart';
+
 // Pages - import all your pages
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -13,6 +15,10 @@ part 'app_router.gr.dart';
 
 @AutoRouterConfig(replaceInRouteName: 'Page,Route')
 class AppRouter extends RootStackRouter {
+  AppRouter(this._authGuard);
+
+  final AuthGuard _authGuard;
+
   @override
   RouteType get defaultRouteType => const RouteType.material();
 
@@ -26,19 +32,14 @@ class AppRouter extends RootStackRouter {
         AutoRoute(page: LoginRoute.page),
         AutoRoute(page: RegisterRoute.page),
 
-        // Main App with Bottom Navigation
+        // Main App — guard ensures only authenticated users can enter.
         AutoRoute(
           page: MainNavigationRoute.page,
+          guards: [_authGuard],
           children: [
             AutoRoute(page: HomeRoute.page, initial: true),
             AutoRoute(page: SettingsRoute.page),
-            // Add more tabs here
           ],
         ),
-      ];
-
-  @override
-  List<AutoRouteGuard> get guards => [
-        // Add auth guards here if needed
       ];
 }

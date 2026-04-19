@@ -7,19 +7,10 @@ import '../cache/cache_keys.dart';
 import '../cache/cache_manager.dart';
 import 'supported_locales.dart';
 
-/// Singleton manager for handling localization operations
 class LocalizationManager {
-  LocalizationManager._internal();
-  static LocalizationManager? _instance;
+  LocalizationManager(this._cacheManager);
 
-  static LocalizationManager get instance {
-    _instance ??= LocalizationManager._internal();
-    return _instance!;
-  }
-
-  factory LocalizationManager() => instance;
-
-  final CacheManager _cacheManager = CacheManager.instance;
+  final CacheManager _cacheManager;
 
   /// Get list of all supported locales
   List<Locale> get supportedLocales => SupportedLocale.locales;

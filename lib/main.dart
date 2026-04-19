@@ -22,7 +22,7 @@ Future<void> main() async {
 
   // Initialize dependencies
   await di.initDependencies();
-  await CacheManager.instance.init();
+  await di.sl<CacheManager>().init();
   await EasyLocalization.ensureInitialized();
 
   // Error handling

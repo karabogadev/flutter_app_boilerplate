@@ -10,13 +10,10 @@ import 'sync_operation.dart';
 import 'sync_status.dart';
 
 class SyncQueue {
-  SyncQueue._();
+  SyncQueue(this._hiveManager, this._dioClient);
 
-  static final SyncQueue _instance = SyncQueue._();
-  static SyncQueue get instance => _instance;
-
-  final DioClient _dioClient = DioClient.instance;
-  final HiveManager _hiveManager = HiveManager.instance;
+  final DioClient _dioClient;
+  final HiveManager _hiveManager;
 
   bool _isProcessing = false;
   final _onQueueChanged = StreamController<int>.broadcast();

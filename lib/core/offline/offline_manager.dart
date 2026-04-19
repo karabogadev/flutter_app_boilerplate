@@ -9,33 +9,12 @@ import 'sync_status.dart';
 
 /// Orchestrates offline-first behavior by coordinating connectivity
 /// monitoring and sync queue processing.
-///
-/// This is the main entry point for offline-first functionality.
-///
-/// Usage:
-/// ```dart
-/// final manager = OfflineManager.instance;
-/// await manager.init();
-///
-/// // Listen to status changes
-/// manager.onStatusChanged.listen((status) {
-///   if (status.isOnline) {
-///     print('Back online! Pending: ${status.pendingCount}');
-///   }
-/// });
-///
-/// // Queue an operation
-/// manager.queueOperation(...);
-/// ```
 class OfflineManager {
-  OfflineManager._();
+  OfflineManager(this._hiveManager, this._connectivityService, this._syncQueue);
 
-  static final OfflineManager _instance = OfflineManager._();
-  static OfflineManager get instance => _instance;
-
-  final HiveManager _hiveManager = HiveManager.instance;
-  final ConnectivityService _connectivityService = ConnectivityService.instance;
-  final SyncQueue _syncQueue = SyncQueue.instance;
+  final HiveManager _hiveManager;
+  final ConnectivityService _connectivityService;
+  final SyncQueue _syncQueue;
 
   StreamSubscription<ConnectivityStatus>? _connectivitySubscription;
   final _statusController = StreamController<OfflineStatus>.broadcast();
@@ -83,9 +62,7 @@ class OfflineManager {
     _isInitialized = true;
     _emitStatus();
 
-    if (kDebugMode) {
-      print('OfflineManager: Initialized');
-    }
+    debugPrint('OfflineManager: initialized');
   }
 
   /// Handle connectivity status changes

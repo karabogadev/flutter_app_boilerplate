@@ -10,23 +10,8 @@ import 'sync_status.dart';
 ///
 /// Uses connectivity_plus to detect network type changes and
 /// performs actual connectivity checks to verify internet access.
-///
-/// Usage:
-/// ```dart
-/// final service = ConnectivityService.instance;
-/// await service.init();
-///
-/// // Check current status
-/// if (service.isOnline) { ... }
-///
-/// // Listen to changes
-/// service.onStatusChanged.listen((status) { ... });
-/// ```
 class ConnectivityService {
-  ConnectivityService._();
-
-  static final ConnectivityService _instance = ConnectivityService._();
-  static ConnectivityService get instance => _instance;
+  ConnectivityService();
 
   final Connectivity _connectivity = Connectivity();
 

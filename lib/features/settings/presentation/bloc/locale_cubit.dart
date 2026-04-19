@@ -41,9 +41,8 @@ class LocaleCubit extends Cubit<LocaleState> {
   final CacheManager _cacheManager;
   final LocalizationManager _localizationManager;
 
-  LocaleCubit(this._cacheManager)
-      : _localizationManager = LocalizationManager.instance,
-        super(LocaleState.initial()) {
+  LocaleCubit(this._cacheManager, this._localizationManager)
+      : super(LocaleState.initial()) {
     _loadSavedLocale();
   }
 
