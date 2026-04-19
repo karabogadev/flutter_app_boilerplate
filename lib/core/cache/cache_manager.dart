@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'cache_keys.dart';
 import 'cacheable_base_model.dart';
 
@@ -106,8 +108,7 @@ class CacheManager implements ICacheManager {
   }
 
   @override
-  Future<void> setObject<T extends CacheableModel>(
-      CacheKeys key, T value) async {
+  Future<void> setObject<T extends CacheableModel>(CacheKeys key, T value) async {
     _checkInit();
     final jsonString = jsonEncode(value.toJson());
     await _prefs!.setString(key.key, jsonString);
@@ -149,9 +150,7 @@ class CacheManager implements ICacheManager {
     if (jsonString == null) return null;
     try {
       final jsonList = jsonDecode(jsonString) as List;
-      return jsonList
-          .map((e) => fromJson(e as Map<String, dynamic>))
-          .toList();
+      return jsonList.map((e) => fromJson(e as Map<String, dynamic>)).toList();
     } catch (_) {
       return null;
     }
