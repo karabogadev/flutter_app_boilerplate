@@ -3,20 +3,24 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/offline/sync_queue.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
 import '../datasources/auth_remote_datasource.dart';
+import '../models/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final AuthLocalDataSource localDataSource;
   final DioClient dioClient;
+  final SyncQueue syncQueue;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
     required this.dioClient,
+    required this.syncQueue,
   });
 
   @override
@@ -29,20 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-
-      // Save tokens
-      await localDataSource.saveTokens(
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      );
-
-      // Set auth token for future requests
-      dioClient.setAuthToken(result.accessToken);
-
-      // Save user
-      await localDataSource.saveUser(result.user);
-
-      return Right(result.user.toEntity());
+      return Right(await _persistAuthResult(result));
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     } on NetworkException catch (e) {
@@ -64,20 +55,7 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         name: name,
       );
-
-      // Save tokens
-      await localDataSource.saveTokens(
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      );
-
-      // Set auth token for future requests
-      dioClient.setAuthToken(result.accessToken);
-
-      // Save user
-      await localDataSource.saveUser(result.user);
-
-      return Right(result.user.toEntity());
+      return Right(await _persistAuthResult(result));
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     } on NetworkException catch (e) {
@@ -92,7 +70,6 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = await localDataSource.getUser();
       if (user != null) {
-        // Restore auth token
         final token = await localDataSource.getAccessToken();
         if (token != null) {
           dioClient.setAuthToken(token);
@@ -108,26 +85,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, Unit>> logout() async {
+    // Remote logout is best-effort — a server error doesn't block local cleanup.
     try {
-      // Call remote logout (best effort)
       await remoteDataSource.logout();
+    } catch (_) {}
 
-      // Clear local data
+    // Local cleanup must succeed — if it fails the user is in a broken state.
+    try {
       await localDataSource.clearAll();
-
-      // Clear auth token
+      await syncQueue.clearPending();
       dioClient.clearAuthToken();
-
       return const Right(unit);
     } on CacheException catch (e) {
       return Left(CacheFailure(message: e.message));
     } catch (e) {
-      // Even if remote logout fails, we should clear local data
-      try {
-        await localDataSource.clearAll();
-        dioClient.clearAuthToken();
-      } catch (_) {}
-      return const Right(unit);
+      return Left(CacheFailure(message: e.toString()));
     }
   }
 
@@ -139,5 +111,15 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {
       return const Right(false);
     }
+  }
+
+  Future<User> _persistAuthResult(AuthResponse result) async {
+    await localDataSource.saveTokens(
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    );
+    dioClient.setAuthToken(result.accessToken);
+    await localDataSource.saveUser(result.user);
+    return result.user.toEntity();
   }
 }

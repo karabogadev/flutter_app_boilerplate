@@ -1,5 +1,6 @@
 import '../../../../core/cache/cache_keys.dart';
 import '../../../../core/cache/cache_manager.dart';
+import '../../../../core/cache/secure_cache_manager.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/user_model.dart';
 
@@ -20,10 +21,19 @@ abstract class AuthLocalDataSource {
   Future<void> clearAll();
 }
 
+/// Tokens are stored in the platform keychain/keystore via [SecureCacheManager].
+/// Non-sensitive user data (profile) is stored in [CacheManager].
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   final CacheManager cacheManager;
+  final SecureCacheManager secureCacheManager;
 
-  AuthLocalDataSourceImpl({required this.cacheManager});
+  AuthLocalDataSourceImpl({
+    required this.cacheManager,
+    required this.secureCacheManager,
+  });
+
+  static const _accessTokenKey = 'access_token';
+  static const _refreshTokenKey = 'refresh_token';
 
   @override
   Future<void> saveTokens({
@@ -31,9 +41,9 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     String? refreshToken,
   }) async {
     try {
-      await cacheManager.setString(CacheKeys.accessToken, accessToken);
+      await secureCacheManager.write(_accessTokenKey, accessToken);
       if (refreshToken != null) {
-        await cacheManager.setString(CacheKeys.refreshToken, refreshToken);
+        await secureCacheManager.write(_refreshTokenKey, refreshToken);
       }
     } catch (e) {
       throw CacheException(message: 'Failed to save tokens: $e');
@@ -43,7 +53,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<String?> getAccessToken() async {
     try {
-      return cacheManager.getString(CacheKeys.accessToken);
+      return secureCacheManager.read(_accessTokenKey);
     } catch (e) {
       throw CacheException(message: 'Failed to get access token: $e');
     }
@@ -52,7 +62,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<String?> getRefreshToken() async {
     try {
-      return cacheManager.getString(CacheKeys.refreshToken);
+      return secureCacheManager.read(_refreshTokenKey);
     } catch (e) {
       throw CacheException(message: 'Failed to get refresh token: $e');
     }
@@ -82,8 +92,8 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<void> clearAll() async {
     try {
-      await cacheManager.remove(CacheKeys.accessToken);
-      await cacheManager.remove(CacheKeys.refreshToken);
+      await secureCacheManager.delete(_accessTokenKey);
+      await secureCacheManager.delete(_refreshTokenKey);
       await cacheManager.remove(CacheKeys.user);
     } catch (e) {
       throw CacheException(message: 'Failed to clear auth data: $e');
