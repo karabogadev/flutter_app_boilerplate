@@ -28,9 +28,6 @@
     "forgot_password": "Forgot Password?",
     "dont_have_account": "Don't have an account?",
     "already_have_account": "Already have an account?",
-    "login_success": "Login successful",
-    "register_success": "Registration successful",
-    "logout_success": "Logged out successfully",
     "welcome_back": "Welcome Back",
     "sign_in_subtitle": "Sign in to continue",
     "create_account": "Create Account",
@@ -94,6 +91,20 @@
     "server_error": "Server error. Please try again later.",
     "network_error": "No internet connection. Please check your network.",
     "unknown_error": "An unexpected error occurred.",
-    "session_expired": "Session expired. Please login again."
+    "no_connection_title": "No Connection",
+    "server_error_title": "Server Error",
+    "empty_title": "No Data",
+    "empty_message": "No data available at the moment."
+  },
+  "offline": {
+    "syncing": "Syncing...",
+    "offline": "You are offline",
+    "online": "Connected",
+    "back_online": "Back online",
+    "dismiss": "Dismiss",
+    "pending_operations": {
+      "one": "{} pending operation",
+      "other": "{} pending operations"
+    }
   }
 }

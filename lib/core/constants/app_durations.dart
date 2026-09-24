@@ -12,7 +12,6 @@ abstract class AppDurations {
 
   // Loading states
   static const Duration shimmerDuration = Duration(milliseconds: 1500);
-  static const Duration splashDuration = Duration(seconds: 2);
   static const Duration snackbarDuration = Duration(seconds: 3);
 
   // Debounce

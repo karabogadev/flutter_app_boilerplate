@@ -59,6 +59,15 @@ void main() {
     expect(bloc.state, const AuthInitial());
   });
 
+  testWidgets('rejects a malformed email', (tester) async {
+    await pumpLoginPage(tester);
+
+    await submit(tester, email: 'not-an-email', password: 'secret');
+
+    expect(find.text('Please enter a valid email'), findsOneWidget);
+    expect(bloc.state, const AuthInitial());
+  });
+
   testWidgets('signs in with the entered credentials', (tester) async {
     await pumpLoginPage(tester);
 

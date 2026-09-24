@@ -6,6 +6,7 @@ import 'package:flutter_app_boilerplate/core/network/dio_client.dart';
 import 'package:flutter_app_boilerplate/core/offline/connectivity_service.dart';
 import 'package:flutter_app_boilerplate/core/offline/offline_manager.dart';
 import 'package:flutter_app_boilerplate/core/offline/sync_queue.dart';
+import 'package:flutter_app_boilerplate/core/offline/sync_status.dart';
 import 'package:flutter_app_boilerplate/features/auth/data/datasources/auth_local_datasource.dart';
 import 'package:flutter_app_boilerplate/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:flutter_app_boilerplate/features/auth/data/models/user_model.dart';
@@ -29,6 +30,21 @@ class MockConnectivityService extends Mock implements ConnectivityService {}
 class MockSyncQueue extends Mock implements SyncQueue {}
 
 class MockOfflineManager extends Mock implements OfflineManager {}
+
+/// An [OfflineManager] that reports "online, nothing pending" and never
+/// changes, for tests that render the whole app.
+MockOfflineManager onlineOfflineManager() {
+  final manager = MockOfflineManager();
+  when(() => manager.onStatusChanged).thenAnswer((_) => const Stream.empty());
+  when(() => manager.currentStatus).thenReturn(
+    const OfflineStatus(
+      connectivity: ConnectivityStatus.online,
+      pendingCount: 0,
+      isSyncing: false,
+    ),
+  );
+  return manager;
+}
 
 // Auth data sources
 class MockAuthRemoteDataSource extends Mock implements AuthRemoteDataSource {}

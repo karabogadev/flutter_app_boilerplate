@@ -109,41 +109,30 @@ class SyncQueue {
     _notifyQueueChanged();
   }
 
-  Future<void> clearCompleted() async {
-    final keys = _box.values
-        .where((op) => op.status == SyncStatus.completed)
-        .map((op) => op.id)
-        .toList();
-    await _box.deleteAll(keys);
-    AppLogger.debug('Cleared ${keys.length} completed ops', name: 'sync');
-  }
+  Future<void> clearCompleted() =>
+      _clearWhere((op) => op.status == SyncStatus.completed, 'completed');
 
-  Future<void> clearFailed() async {
-    final keys = _box.values
-        .where((op) => op.status == SyncStatus.failed)
-        .map((op) => op.id)
-        .toList();
-    await _box.deleteAll(keys);
-    AppLogger.debug('Cleared ${keys.length} failed ops', name: 'sync');
-  }
+  Future<void> clearFailed() =>
+      _clearWhere((op) => op.status == SyncStatus.failed, 'failed');
 
-  Future<void> clearPending() async {
-    final keys = _box.values
-        .where((op) => op.status == SyncStatus.pending)
-        .map((op) => op.id)
-        .toList();
+  Future<void> clearPending() =>
+      _clearWhere((op) => op.status == SyncStatus.pending, 'pending');
+
+  Future<void> clearStale() => _clearWhere((op) => op.isStale, 'stale');
+
+  /// Deletes matching operations and notifies listeners, since any of these
+  /// can change [pendingCount] (stale operations may still be pending).
+  Future<void> _clearWhere(
+    bool Function(SyncOperation op) test,
+    String label,
+  ) async {
+    final keys = [
+      for (final op in _box.values)
+        if (test(op)) op.id,
+    ];
     await _box.deleteAll(keys);
     _notifyQueueChanged();
-    AppLogger.debug('Cleared ${keys.length} pending ops', name: 'sync');
-  }
-
-  Future<void> clearStale() async {
-    final keys = _box.values
-        .where((op) => op.isStale)
-        .map((op) => op.id)
-        .toList();
-    await _box.deleteAll(keys);
-    AppLogger.debug('Cleared ${keys.length} stale ops', name: 'sync');
+    AppLogger.debug('Cleared ${keys.length} $label ops', name: 'sync');
   }
 
   // ─────────────────────────────────────────────────────────────

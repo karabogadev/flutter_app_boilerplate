@@ -1,46 +1,61 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/app_spacing.dart';
+import '../localization/locale_keys.dart';
 import 'app_button.dart';
 
 class AppErrorWidget extends StatelessWidget {
-  final String? title;
-  final String message;
-  final VoidCallback? onRetry;
-  final IconData icon;
-
   const AppErrorWidget({
     super.key,
     this.title,
-    required this.message,
+    required String this.message,
     this.onRetry,
     this.icon = Icons.error_outline,
-  });
+  }) : _titleKey = null,
+       _messageKey = null;
 
+  /// Presets use translated default texts; pass [title] / [message] to
+  /// override them.
   const AppErrorWidget.network({
     super.key,
-    this.title = 'No Connection',
-    this.message = 'Please check your internet connection and try again.',
+    this.title,
+    this.message,
     this.onRetry,
-  }) : icon = Icons.wifi_off;
+  }) : icon = Icons.wifi_off,
+       _titleKey = LocaleKeys.errorsNoConnectionTitle,
+       _messageKey = LocaleKeys.errorsNetworkError;
 
   const AppErrorWidget.server({
     super.key,
-    this.title = 'Server Error',
-    this.message = 'Something went wrong. Please try again later.',
+    this.title,
+    this.message,
     this.onRetry,
-  }) : icon = Icons.cloud_off;
+  }) : icon = Icons.cloud_off,
+       _titleKey = LocaleKeys.errorsServerErrorTitle,
+       _messageKey = LocaleKeys.errorsServerError;
 
   const AppErrorWidget.empty({
     super.key,
-    this.title = 'No Data',
-    this.message = 'No data available at the moment.',
+    this.title,
+    this.message,
     this.onRetry,
-  }) : icon = Icons.inbox_outlined;
+  }) : icon = Icons.inbox_outlined,
+       _titleKey = LocaleKeys.errorsEmptyTitle,
+       _messageKey = LocaleKeys.errorsEmptyMessage;
+
+  final String? title;
+  final String? message;
+  final VoidCallback? onRetry;
+  final IconData icon;
+  final String? _titleKey;
+  final String? _messageKey;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final title = this.title ?? _titleKey?.tr();
+    final message = this.message ?? _messageKey?.tr() ?? '';
 
     return Center(
       child: Padding(
@@ -52,7 +67,7 @@ class AppErrorWidget extends StatelessWidget {
             if (title != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
-                title!,
+                title,
                 style: theme.textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
@@ -66,7 +81,7 @@ class AppErrorWidget extends StatelessWidget {
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.lg),
               AppButton(
-                text: 'Retry',
+                text: LocaleKeys.commonRetry.tr(),
                 onPressed: onRetry,
                 prefixIcon: Icons.refresh,
               ),

@@ -26,6 +26,11 @@ class AppTextField extends StatefulWidget {
   final bool autofocus;
   final bool readOnly;
 
+  /// Translated fallbacks used by the presets when [labelText] / [hintText]
+  /// are not given.
+  final String? _labelKey;
+  final String? _hintKey;
+
   const AppTextField({
     super.key,
     this.controller,
@@ -48,13 +53,14 @@ class AppTextField extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.readOnly = false,
-  });
+  }) : _labelKey = null,
+       _hintKey = null;
 
   const AppTextField.email({
     super.key,
     this.controller,
-    this.labelText = 'Email',
-    this.hintText = 'Enter your email',
+    this.labelText,
+    this.hintText,
     this.errorText,
     this.enabled = true,
     this.onChanged,
@@ -71,13 +77,15 @@ class AppTextField extends StatefulWidget {
        maxLines = 1,
        maxLength = null,
        prefixIcon = const Icon(Icons.email_outlined),
-       suffixIcon = null;
+       suffixIcon = null,
+       _labelKey = LocaleKeys.authEmail,
+       _hintKey = LocaleKeys.authEmailHint;
 
   const AppTextField.password({
     super.key,
     this.controller,
-    this.labelText = 'Password',
-    this.hintText = 'Enter your password',
+    this.labelText,
+    this.hintText,
     this.errorText,
     this.enabled = true,
     this.onChanged,
@@ -94,7 +102,9 @@ class AppTextField extends StatefulWidget {
        maxLines = 1,
        maxLength = null,
        prefixIcon = const Icon(Icons.lock_outlined),
-       suffixIcon = null;
+       suffixIcon = null,
+       _labelKey = LocaleKeys.authPassword,
+       _hintKey = LocaleKeys.authPasswordHint;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -128,8 +138,8 @@ class _AppTextFieldState extends State<AppTextField> {
       onFieldSubmitted: widget.onSubmitted,
       validator: widget.validator,
       decoration: InputDecoration(
-        labelText: widget.labelText,
-        hintText: widget.hintText,
+        labelText: widget.labelText ?? widget._labelKey?.tr(),
+        hintText: widget.hintText ?? widget._hintKey?.tr(),
         errorText: widget.errorText,
         prefixIcon: widget.prefixIcon,
         suffixIcon: widget.obscureText

@@ -60,7 +60,7 @@ class ConnectivityState extends Equatable {
 /// Usage:
 /// ```dart
 /// BlocProvider<ConnectivityCubit>(
-///   create: (_) => ConnectivityCubit(sl())..init(),
+///   create: (_) => ConnectivityCubit(offlineManager)..init(),
 /// ),
 ///
 /// // In widget:

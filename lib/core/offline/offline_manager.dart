@@ -122,20 +122,6 @@ class OfflineManager {
     }
   }
 
-  /// Force a sync even if offline (will likely fail but useful for testing)
-  Future<SyncResult> forceSync() async {
-    _connectivityService.setSyncing();
-    _emitStatus();
-
-    try {
-      final result = await _syncQueue.processQueue();
-      return result;
-    } finally {
-      _connectivityService.setSyncComplete();
-      _emitStatus();
-    }
-  }
-
   /// Clear all synced data and queue
   Future<void> clearAll() async {
     await _hiveManager.clearAll();

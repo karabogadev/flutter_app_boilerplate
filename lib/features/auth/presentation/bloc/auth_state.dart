@@ -28,11 +28,13 @@ final class Unauthenticated extends AuthState {
   const Unauthenticated();
 }
 
+/// A sign-in or registration attempt failed. The UI turns [failure] into
+/// text (`failure.localizedMessage`), keeping the bloc free of translations.
 final class AuthError extends AuthState {
-  const AuthError(this.message);
+  const AuthError(this.failure);
 
-  final String message;
+  final Failure failure;
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [failure];
 }

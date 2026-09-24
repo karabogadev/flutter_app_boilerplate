@@ -47,9 +47,6 @@ class HiveManager {
     if (!Hive.isAdapterRegistered(HiveTypeIds.syncOperation)) {
       Hive.registerAdapter(SyncOperationAdapter());
     }
-    if (!Hive.isAdapterRegistered(HiveTypeIds.syncMetadata)) {
-      Hive.registerAdapter(SyncMetadataAdapter());
-    }
 
     // Add more adapters here as needed
     // Example:
@@ -61,10 +58,7 @@ class HiveManager {
   /// Opens the boxes the sync queue needs at startup. Feature boxes should
   /// be opened on demand with [openBox] / [openLazyBox].
   Future<void> _openBoxes() async {
-    await Future.wait([
-      Hive.openBox<SyncOperation>(HiveBoxes.syncQueue),
-      Hive.openBox<SyncMetadata>(HiveBoxes.syncMetadata),
-    ]);
+    await Future.wait([Hive.openBox<SyncOperation>(HiveBoxes.syncQueue)]);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -75,12 +69,6 @@ class HiveManager {
   Box<SyncOperation> getSyncQueueBox() {
     _ensureInitialized();
     return Hive.box<SyncOperation>(HiveBoxes.syncQueue);
-  }
-
-  /// Get the sync metadata box
-  Box<SyncMetadata> getSyncMetadataBox() {
-    _ensureInitialized();
-    return Hive.box<SyncMetadata>(HiveBoxes.syncMetadata);
   }
 
   /// Open a typed box on demand

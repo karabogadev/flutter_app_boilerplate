@@ -32,9 +32,6 @@ abstract class LocaleKeys {
   static const String authForgotPassword = 'auth.forgot_password';
   static const String authDontHaveAccount = 'auth.dont_have_account';
   static const String authAlreadyHaveAccount = 'auth.already_have_account';
-  static const String authLoginSuccess = 'auth.login_success';
-  static const String authRegisterSuccess = 'auth.register_success';
-  static const String authLogoutSuccess = 'auth.logout_success';
   static const String authWelcomeBack = 'auth.welcome_back';
   static const String authSignInSubtitle = 'auth.sign_in_subtitle';
   static const String authCreateAccount = 'auth.create_account';
@@ -103,5 +100,18 @@ abstract class LocaleKeys {
   static const String errorsServerError = 'errors.server_error';
   static const String errorsNetworkError = 'errors.network_error';
   static const String errorsUnknownError = 'errors.unknown_error';
-  static const String errorsSessionExpired = 'errors.session_expired';
+  static const String errorsNoConnectionTitle = 'errors.no_connection_title';
+  static const String errorsServerErrorTitle = 'errors.server_error_title';
+  static const String errorsEmptyTitle = 'errors.empty_title';
+  static const String errorsEmptyMessage = 'errors.empty_message';
+
+  // Offline
+  static const String offlineSyncing = 'offline.syncing';
+  static const String offlineOffline = 'offline.offline';
+  static const String offlineOnline = 'offline.online';
+  static const String offlineBackOnline = 'offline.back_online';
+  static const String offlineDismiss = 'offline.dismiss';
+
+  /// Plural. Usage: LocaleKeys.offlinePendingOperations.plural(count)
+  static const String offlinePendingOperations = 'offline.pending_operations';
 }

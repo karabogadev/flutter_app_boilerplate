@@ -1,6 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../localization/locale_keys.dart';
 import '../offline/connectivity_cubit.dart';
 
 /// A banner that shows when the device is offline.
@@ -50,7 +52,9 @@ class OfflineBanner extends StatelessWidget {
                     ),
                     if (showPendingCount && state.hasPendingOperations)
                       Text(
-                        '${state.pendingOperations} pending operations',
+                        LocaleKeys.offlinePendingOperations.plural(
+                          state.pendingOperations,
+                        ),
                         style: TextStyle(
                           color: _getTextColor(
                             context,
@@ -70,7 +74,7 @@ class OfflineBanner extends StatelessWidget {
               TextButton(
                 onPressed: onTap,
                 child: Text(
-                  'Dismiss',
+                  LocaleKeys.offlineDismiss.tr(),
                   style: TextStyle(color: _getTextColor(context, state)),
                 ),
               ),
@@ -102,12 +106,12 @@ class OfflineBanner extends StatelessWidget {
 
   String _getMessage(ConnectivityState state) {
     if (state.isSyncing) {
-      return 'Syncing...';
+      return LocaleKeys.offlineSyncing.tr();
     }
     if (state.isOffline) {
-      return 'You are offline';
+      return LocaleKeys.offlineOffline.tr();
     }
-    return 'Connected';
+    return LocaleKeys.offlineOnline.tr();
   }
 
   Color _getBackgroundColor(BuildContext context, ConnectivityState state) {
@@ -296,10 +300,10 @@ class ConnectivityListener extends StatelessWidget {
 
         if (state.isSyncing) {
           messenger.showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Row(
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
@@ -307,21 +311,21 @@ class ConnectivityListener extends StatelessWidget {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   ),
-                  SizedBox(width: 12),
-                  Text('Syncing...'),
+                  const SizedBox(width: 12),
+                  Text(LocaleKeys.offlineSyncing.tr()),
                 ],
               ),
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         } else if (state.isOffline && showOfflineMessage) {
           messenger.showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.cloud_off, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('You are offline'),
+                  const Icon(Icons.cloud_off, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Text(LocaleKeys.offlineOffline.tr()),
                 ],
               ),
               backgroundColor: Colors.grey.shade700,
@@ -331,11 +335,11 @@ class ConnectivityListener extends StatelessWidget {
         } else if (state.isOnline && showOnlineMessage) {
           messenger.showSnackBar(
             SnackBar(
-              content: const Row(
+              content: Row(
                 children: [
-                  Icon(Icons.cloud_done, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Back online'),
+                  const Icon(Icons.cloud_done, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Text(LocaleKeys.offlineBackOnline.tr()),
                 ],
               ),
               backgroundColor: Colors.green.shade600,

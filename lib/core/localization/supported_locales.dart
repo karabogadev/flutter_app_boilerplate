@@ -46,14 +46,6 @@ enum SupportedLocale {
     );
   }
 
-  /// Find SupportedLocale by language code
-  static SupportedLocale fromLanguageCode(String code) {
-    return SupportedLocale.values.firstWhere(
-      (e) => e.languageCode == code,
-      orElse: () => SupportedLocale.english,
-    );
-  }
-
   /// Default locale
   static SupportedLocale get defaultLocale => SupportedLocale.english;
 

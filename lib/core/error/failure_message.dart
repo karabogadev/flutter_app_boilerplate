@@ -10,12 +10,11 @@ extension FailureMessage on Failure {
   /// (they usually explain what to fix, e.g. "Email already taken"). Anything
   /// else gets a generic translated message instead of internal details.
   String get localizedMessage => switch (this) {
-        NetworkFailure() => LocaleKeys.errorsNetworkError.tr(),
-        ServerFailure(:final statusCode?) when statusCode >= 500 =>
-          LocaleKeys.errorsServerError.tr(),
-        ServerFailure(:final message) || ValidationFailure(:final message) =>
-          message,
-        CacheFailure() || UnexpectedFailure() =>
-          LocaleKeys.errorsUnknownError.tr(),
-      };
+    NetworkFailure() => LocaleKeys.errorsNetworkError.tr(),
+    ServerFailure(:final statusCode?) when statusCode >= 500 =>
+      LocaleKeys.errorsServerError.tr(),
+    ServerFailure(:final message) ||
+    ValidationFailure(:final message) => message,
+    CacheFailure() || UnexpectedFailure() => LocaleKeys.errorsUnknownError.tr(),
+  };
 }

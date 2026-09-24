@@ -122,37 +122,6 @@ class ConnectivityService {
     await _updateStatus(_lastResults);
   }
 
-  /// Get a human-readable description of the connection type
-  String getConnectionTypeDescription() {
-    if (_lastResults.isEmpty ||
-        _lastResults.contains(ConnectivityResult.none)) {
-      return 'No connection';
-    }
-
-    final types = _lastResults.map((r) {
-      switch (r) {
-        case ConnectivityResult.wifi:
-          return 'WiFi';
-        case ConnectivityResult.mobile:
-          return 'Mobile';
-        case ConnectivityResult.ethernet:
-          return 'Ethernet';
-        case ConnectivityResult.vpn:
-          return 'VPN';
-        case ConnectivityResult.bluetooth:
-          return 'Bluetooth';
-        case ConnectivityResult.other:
-          return 'Other';
-        case ConnectivityResult.none:
-          return 'None';
-        case ConnectivityResult.satellite:
-          return 'Satellite';
-      }
-    }).toSet();
-
-    return types.join(', ');
-  }
-
   /// Dispose the service
   Future<void> dispose() async {
     await _subscription?.cancel();

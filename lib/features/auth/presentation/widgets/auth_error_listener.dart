@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/error/failure_message.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -19,7 +20,7 @@ class AuthErrorListener extends StatelessWidget {
       listenWhen: (_, current) => current is AuthError,
       listener: (context, state) {
         if (state is AuthError && (ModalRoute.isCurrentOf(context) ?? true)) {
-          context.showSnackBar(state.message, isError: true);
+          context.showSnackBar(state.failure.localizedMessage, isError: true);
         }
       },
       child: child,

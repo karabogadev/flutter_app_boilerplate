@@ -1,39 +1,9 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_app_boilerplate/core/constants/api_constants.dart';
 import 'package:flutter_app_boilerplate/core/network/token_refresh_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Answers requests with [respond] and records them.
-class _FakeAdapter implements HttpClientAdapter {
-  _FakeAdapter(this.respond);
-
-  final Future<ResponseBody> Function(RequestOptions options) respond;
-  final requests = <RequestOptions>[];
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) {
-    requests.add(options);
-    return respond(options);
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-ResponseBody _json(Object body, int statusCode) => ResponseBody.fromString(
-  jsonEncode(body),
-  statusCode,
-  headers: {
-    Headers.contentTypeHeader: [Headers.jsonContentType],
-  },
-);
+import '../../helpers/fake_http_client_adapter.dart';
 
 const _oldHeader = 'Bearer old';
 const _newHeader = 'Bearer new';
@@ -41,8 +11,8 @@ const _newHeader = 'Bearer new';
 void main() {
   late Dio dio;
   late Dio refreshDio;
-  late _FakeAdapter apiAdapter;
-  late _FakeAdapter refreshAdapter;
+  late FakeHttpClientAdapter apiAdapter;
+  late FakeHttpClientAdapter refreshAdapter;
   late List<(String, String?)> savedTokens;
   late int expiredCount;
   late String? storedRefreshToken;
@@ -50,15 +20,15 @@ void main() {
   /// The API accepts only the new token.
   Future<ResponseBody> api(RequestOptions options) async =>
       options.headers[ApiConstants.authorization] == _newHeader
-      ? _json({'ok': true}, 200)
-      : _json({'message': 'unauthorized'}, 401);
+      ? jsonBody({'ok': true}, 200)
+      : jsonBody({'message': 'unauthorized'}, 401);
 
   void install({
     required Future<ResponseBody> Function(RequestOptions) refresh,
   }) {
-    dio = Dio()..httpClientAdapter = apiAdapter = _FakeAdapter(api);
+    dio = Dio()..httpClientAdapter = apiAdapter = FakeHttpClientAdapter(api);
     refreshDio = Dio()
-      ..httpClientAdapter = refreshAdapter = _FakeAdapter(refresh);
+      ..httpClientAdapter = refreshAdapter = FakeHttpClientAdapter(refresh);
     dio.options.headers[ApiConstants.authorization] = _oldHeader;
     dio.interceptors.add(
       TokenRefreshInterceptor(
@@ -75,7 +45,7 @@ void main() {
   Future<ResponseBody> successfulRefresh(RequestOptions _) async {
     // Delay so concurrent 401s arrive while the refresh is still in flight.
     await Future<void>.delayed(const Duration(milliseconds: 20));
-    return _json({'access_token': 'new', 'refresh_token': 'r2'}, 200);
+    return jsonBody({'access_token': 'new', 'refresh_token': 'r2'}, 200);
   }
 
   setUp(() {
@@ -138,7 +108,7 @@ void main() {
   test(
     'expires the session when the server rejects the refresh token',
     () async {
-      install(refresh: (_) async => _json({'message': 'invalid'}, 401));
+      install(refresh: (_) async => jsonBody({'message': 'invalid'}, 401));
 
       await expectLater(dio.get<dynamic>('/a'), throwsA(isA<DioException>()));
       expect(expiredCount, 1);
@@ -168,7 +138,7 @@ void main() {
   test('retries a request at most once', () async {
     // Refresh "succeeds" but the API keeps rejecting the new token.
     install(refresh: successfulRefresh);
-    apiAdapter = _FakeAdapter((_) async => _json({}, 401));
+    apiAdapter = FakeHttpClientAdapter((_) async => jsonBody({}, 401));
     dio.httpClientAdapter = apiAdapter;
 
     await expectLater(dio.get<dynamic>('/a'), throwsA(isA<DioException>()));

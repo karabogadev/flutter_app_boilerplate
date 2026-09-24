@@ -4,14 +4,11 @@ import 'package:flutter_app_boilerplate/config/routes/app_router.dart';
 import 'package:flutter_app_boilerplate/config/routes/auth_guard.dart';
 import 'package:flutter_app_boilerplate/core/cache/cache_keys.dart';
 import 'package:flutter_app_boilerplate/core/cache/cache_manager.dart';
-import 'package:flutter_app_boilerplate/core/offline/offline_manager.dart';
-import 'package:flutter_app_boilerplate/core/offline/sync_status.dart';
 import 'package:flutter_app_boilerplate/features/auth/presentation/pages/login_page.dart';
 import 'package:flutter_app_boilerplate/features/home/presentation/pages/home_page.dart';
 import 'package:flutter_app_boilerplate/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:flutter_app_boilerplate/features/settings/data/repositories/settings_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes/fake_auth_repository.dart';
@@ -27,17 +24,7 @@ void main() {
   setUpAll(setUpLocalization);
 
   setUp(() {
-    offlineManager = MockOfflineManager();
-    when(
-      () => offlineManager.onStatusChanged,
-    ).thenAnswer((_) => const Stream.empty());
-    when(() => offlineManager.currentStatus).thenReturn(
-      const OfflineStatus(
-        connectivity: ConnectivityStatus.online,
-        pendingCount: 0,
-        isSyncing: false,
-      ),
-    );
+    offlineManager = onlineOfflineManager();
   });
 
   Future<void> pumpApp(

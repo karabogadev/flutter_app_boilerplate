@@ -164,9 +164,9 @@ lib/
 │   └── auth_guard.dart        # Blocks signed-out users
 ├── core/
 │   ├── cache/                 # CacheManager (prefs), SecureCacheManager (keychain), keys
-│   ├── constants/             # API constants, spacing, durations, assets
+│   ├── constants/             # API constants, spacing, durations
 │   ├── database/              # HiveManager, box names, type IDs
-│   ├── error/                 # Exceptions (data sources) and sealed Failures
+│   ├── error/                 # Exceptions, sealed Failures, translated failure messages
 │   ├── extensions/            # BuildContext, DateTime, String helpers
 │   ├── localization/          # LocaleKeys, SupportedLocale
 │   ├── logging/               # AppLogger (dart:developer)
@@ -223,11 +223,13 @@ switch (await _repository.getProduct(id)) {
   case Ok(:final value):
     emit(ProductLoaded(value));
   case Err(:final failure):
-    emit(ProductError(failure.message));
+    emit(ProductError(failure));
 }
 ```
 
 `Result.guard` catches `Exception`s only. `Error`s are programming bugs and are left to surface.
+
+Blocs keep the `Failure` itself in their state (e.g. `AuthError(failure)`); the UI turns it into text with `failure.localizedMessage` (`core/error/failure_message.dart`). Network and unexpected failures get a translated generic message, 5xx responses hide server details, and 4xx/validation messages from the backend are shown as-is.
 
 ### 2. Network (Dio)
 
@@ -314,7 +316,7 @@ Launch flow: `SplashPage` → onboarding (first launch) or session restore → H
 | `AppButton` | Primary / secondary / text buttons with a loading state |
 | `AppTextField` | Styled input; `.email` and `.password` presets (with an accessible visibility toggle) |
 | `AppCachedImage` | Cached network image, decoded at display size (`memCacheWidth` from the device pixel ratio) |
-| `LoadingIndicator`, `AppErrorWidget` | Loading and error states |
+| `LoadingIndicator`, `AppErrorWidget` | Loading and error states (`AppErrorWidget.network/.server/.empty` ship translated texts) |
 | `OfflineBanner`, `OfflineIndicatorDot`, `OfflineAwareButton`, `ConnectivityListener` | Connectivity UI |
 
 ### 8. Offline-First Sync
@@ -454,7 +456,7 @@ class ProductsCubit extends Cubit<ProductsState> {
       case Ok(:final value):
         emit(ProductsLoaded(value));
       case Err(:final failure):
-        emit(ProductsError(failure.message));
+        emit(ProductsError(failure));
     }
   }
 }
@@ -488,7 +490,8 @@ class ProductsPage extends StatelessWidget {
         body: BlocBuilder<ProductsCubit, ProductsState>(
           builder: (context, state) => switch (state) {
             ProductsLoading() => const Center(child: LoadingIndicator()),
-            ProductsError(:final message) => AppErrorWidget(message: message),
+            ProductsError(:final failure) =>
+                AppErrorWidget(message: failure.localizedMessage),
             ProductsLoaded(:final products) => ListView.builder(
                 itemCount: products.length,
                 itemBuilder: (context, index) => ProductTile(products[index]),

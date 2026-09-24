@@ -28,9 +28,6 @@
     "forgot_password": "Şifremi Unuttum",
     "dont_have_account": "Hesabınız yok mu?",
     "already_have_account": "Zaten hesabınız var mı?",
-    "login_success": "Giriş başarılı",
-    "register_success": "Kayıt başarılı",
-    "logout_success": "Çıkış yapıldı",
     "welcome_back": "Tekrar Hoş Geldiniz",
     "sign_in_subtitle": "Devam etmek için giriş yapın",
     "create_account": "Hesap Oluştur",
@@ -94,6 +91,20 @@
     "server_error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin.",
     "network_error": "İnternet bağlantısı yok. Lütfen ağınızı kontrol edin.",
     "unknown_error": "Beklenmeyen bir hata oluştu.",
-    "session_expired": "Oturum süresi doldu. Lütfen tekrar giriş yapın."
+    "no_connection_title": "Bağlantı Yok",
+    "server_error_title": "Sunucu Hatası",
+    "empty_title": "Veri Yok",
+    "empty_message": "Şu anda gösterilecek veri yok."
+  },
+  "offline": {
+    "syncing": "Eşitleniyor...",
+    "offline": "Çevrimdışısınız",
+    "online": "Bağlandı",
+    "back_online": "Tekrar çevrimiçi",
+    "dismiss": "Kapat",
+    "pending_operations": {
+      "one": "{} bekleyen işlem",
+      "other": "{} bekleyen işlem"
+    }
   }
 }

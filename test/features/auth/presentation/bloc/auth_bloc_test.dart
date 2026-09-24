@@ -61,7 +61,7 @@ void main() {
       ),
       expect: () => [
         const AuthLoading(),
-        const AuthError('Invalid credentials'),
+        const AuthError(ServerFailure(message: 'Invalid credentials')),
       ],
     );
   });
@@ -87,10 +87,7 @@ void main() {
       act: (bloc) => bloc.add(
         const RegisterEvent(email: 'test@example.com', password: 'secret'),
       ),
-      expect: () => [
-        const AuthLoading(),
-        const AuthError('No internet connection'),
-      ],
+      expect: () => [const AuthLoading(), const AuthError(NetworkFailure())],
     );
   });
 

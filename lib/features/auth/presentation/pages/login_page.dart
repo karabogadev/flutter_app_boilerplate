@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../config/routes/app_router.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/extensions/string_extensions.dart';
 import '../../../../core/localization/locale_keys.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../bloc/auth_bloc.dart';
@@ -51,6 +52,15 @@ class _LoginPageState extends State<LoginPage> {
       ? LocaleKeys.validationRequiredField.tr()
       : null;
 
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return LocaleKeys.validationRequiredField.tr();
+    }
+    return value.trim().isValidEmail
+        ? null
+        : LocaleKeys.validationInvalidEmail.tr();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,15 +88,11 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: AppSpacing.xxl),
                   AppTextField.email(
                     controller: _emailController,
-                    labelText: LocaleKeys.authEmail.tr(),
-                    hintText: LocaleKeys.authEmailHint.tr(),
-                    validator: _required,
+                    validator: _validateEmail,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField.password(
                     controller: _passwordController,
-                    labelText: LocaleKeys.authPassword.tr(),
-                    hintText: LocaleKeys.authPasswordHint.tr(),
                     validator: _required,
                   ),
                   const SizedBox(height: AppSpacing.sm),
