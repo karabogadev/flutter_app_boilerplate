@@ -4,7 +4,7 @@ import '../../../../core/cache/secure_cache_manager.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/user_model.dart';
 
-abstract class AuthLocalDataSource {
+abstract interface class AuthLocalDataSource {
   Future<void> saveTokens({
     required String accessToken,
     String? refreshToken,
@@ -16,21 +16,23 @@ abstract class AuthLocalDataSource {
 
   Future<void> saveUser(UserModel user);
 
-  Future<UserModel?> getUser();
+  UserModel? getUser();
 
   Future<void> clearAll();
 }
 
-/// Tokens are stored in the platform keychain/keystore via [SecureCacheManager].
-/// Non-sensitive user data (profile) is stored in [CacheManager].
+/// Tokens are stored in the platform keychain/keystore via
+/// [SecureCacheManager]. The non-sensitive user profile is stored in
+/// [CacheManager].
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
-  final CacheManager cacheManager;
-  final SecureCacheManager secureCacheManager;
-
   AuthLocalDataSourceImpl({
-    required this.cacheManager,
-    required this.secureCacheManager,
-  });
+    required CacheManager cacheManager,
+    required SecureCacheManager secureCacheManager,
+  })  : _cacheManager = cacheManager,
+        _secureCacheManager = secureCacheManager;
+
+  final CacheManager _cacheManager;
+  final SecureCacheManager _secureCacheManager;
 
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
@@ -39,64 +41,48 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<void> saveTokens({
     required String accessToken,
     String? refreshToken,
-  }) async {
-    try {
-      await secureCacheManager.write(_accessTokenKey, accessToken);
-      if (refreshToken != null) {
-        await secureCacheManager.write(_refreshTokenKey, refreshToken);
-      }
-    } catch (e) {
-      throw CacheException(message: 'Failed to save tokens: $e');
-    }
-  }
+  }) =>
+      _guard('save tokens', () async {
+        await _secureCacheManager.write(_accessTokenKey, accessToken);
+        if (refreshToken != null) {
+          await _secureCacheManager.write(_refreshTokenKey, refreshToken);
+        }
+      });
 
   @override
-  Future<String?> getAccessToken() async {
-    try {
-      return secureCacheManager.read(_accessTokenKey);
-    } catch (e) {
-      throw CacheException(message: 'Failed to get access token: $e');
-    }
-  }
+  Future<String?> getAccessToken() =>
+      _guard('read access token', () => _secureCacheManager.read(_accessTokenKey));
 
   @override
-  Future<String?> getRefreshToken() async {
-    try {
-      return secureCacheManager.read(_refreshTokenKey);
-    } catch (e) {
-      throw CacheException(message: 'Failed to get refresh token: $e');
-    }
-  }
-
-  @override
-  Future<void> saveUser(UserModel user) async {
-    try {
-      await cacheManager.setObject(CacheKeys.user, user);
-    } catch (e) {
-      throw CacheException(message: 'Failed to save user: $e');
-    }
-  }
-
-  @override
-  Future<UserModel?> getUser() async {
-    try {
-      return cacheManager.getObject(
-        CacheKeys.user,
-        UserModel.fromJson,
+  Future<String?> getRefreshToken() => _guard(
+        'read refresh token',
+        () => _secureCacheManager.read(_refreshTokenKey),
       );
-    } catch (e) {
-      throw CacheException(message: 'Failed to get user: $e');
-    }
-  }
 
   @override
-  Future<void> clearAll() async {
+  Future<void> saveUser(UserModel user) =>
+      _guard('save user', () => _cacheManager.setObject(CacheKeys.user, user));
+
+  @override
+  UserModel? getUser() =>
+      _cacheManager.getObject(CacheKeys.user, UserModel.fromJson);
+
+  @override
+  Future<void> clearAll() => _guard('clear auth data', () async {
+        await Future.wait([
+          _secureCacheManager.delete(_accessTokenKey),
+          _secureCacheManager.delete(_refreshTokenKey),
+          _cacheManager.remove(CacheKeys.user),
+        ]);
+      });
+
+  /// Awaits [body] so asynchronous storage errors are caught too, and wraps
+  /// them in a [CacheException].
+  Future<T> _guard<T>(String action, Future<T> Function() body) async {
     try {
-      await secureCacheManager.delete(_accessTokenKey);
-      await secureCacheManager.delete(_refreshTokenKey);
-      await cacheManager.remove(CacheKeys.user);
-    } catch (e) {
-      throw CacheException(message: 'Failed to clear auth data: $e');
+      return await body();
+    } on Exception catch (e) {
+      throw CacheException(message: 'Failed to $action: $e');
     }
   }
 }

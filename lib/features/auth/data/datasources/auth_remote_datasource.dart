@@ -3,7 +3,7 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/dio_client.dart';
 import '../models/user_model.dart';
 
-abstract class AuthRemoteDataSource {
+abstract interface class AuthRemoteDataSource {
   Future<AuthResponse> login({
     required String email,
     required String password,
@@ -15,74 +15,59 @@ abstract class AuthRemoteDataSource {
     String? name,
   });
 
+  /// Best-effort server-side logout; never throws.
   Future<void> logout();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final DioClient dioClient;
+  AuthRemoteDataSourceImpl({required DioClient dioClient})
+      : _dioClient = dioClient;
 
-  AuthRemoteDataSourceImpl({required this.dioClient});
+  final DioClient _dioClient;
 
   @override
   Future<AuthResponse> login({
     required String email,
     required String password,
-  }) async {
-    try {
-      final response = await dioClient.post<Map<String, dynamic>>(
-        ApiConstants.login,
-        data: {
-          'email': email,
-          'password': password,
-        },
-      );
-
-      if (response.data == null) {
-        throw const ServerException(message: 'Empty response from server');
-      }
-
-      return AuthResponse.fromJson(response.data as Map<String, dynamic>);
-    } on ServerException {
-      rethrow;
-    } catch (e) {
-      throw ServerException(message: e.toString());
-    }
-  }
+  }) =>
+      _postAuth(ApiConstants.login, {'email': email, 'password': password});
 
   @override
   Future<AuthResponse> register({
     required String email,
     required String password,
     String? name,
-  }) async {
-    try {
-      final response = await dioClient.post<Map<String, dynamic>>(
-        ApiConstants.register,
-        data: {
-          'email': email,
-          'password': password,
-          if (name != null) 'name': name,
-        },
-      );
-
-      if (response.data == null) {
-        throw const ServerException(message: 'Empty response from server');
-      }
-
-      return AuthResponse.fromJson(response.data as Map<String, dynamic>);
-    } on ServerException {
-      rethrow;
-    } catch (e) {
-      throw ServerException(message: e.toString());
-    }
-  }
+  }) =>
+      _postAuth(ApiConstants.register, {
+        'email': email,
+        'password': password,
+        if (name != null) 'name': name,
+      });
 
   @override
   Future<void> logout() async {
     try {
-      await dioClient.post<void>(ApiConstants.logout);
-    } catch (_) {
-      // Ignore logout errors - we'll clear local data anyway
+      await _dioClient.post<void>(ApiConstants.logout);
+    } on Exception {
+      // Local data is cleared regardless; a failed server logout is harmless.
+    }
+  }
+
+  /// Network and server errors from [DioClient] propagate unchanged; a body
+  /// that doesn't match [AuthResponse] becomes a [ParseException].
+  Future<AuthResponse> _postAuth(String path, Map<String, dynamic> body) async {
+    final response = await _dioClient.post<Map<String, dynamic>>(
+      path,
+      data: body,
+    );
+    final data = response.data;
+    if (data == null) {
+      throw const ServerException(message: 'Empty response from server');
+    }
+    try {
+      return AuthResponse.fromJson(data);
+    } on Object catch (e) {
+      throw ParseException(message: 'Invalid auth response: $e');
     }
   }
 }
