@@ -1,7 +1,7 @@
+/// Keys for [CacheManager] (SharedPreferences). Auth tokens are deliberately
+/// absent: they live in `SecureCacheManager`.
 enum CacheKeys {
   // Auth
-  accessToken('access_token'),
-  refreshToken('refresh_token'),
   user('user'),
 
   // Onboarding
@@ -9,7 +9,6 @@ enum CacheKeys {
 
   // Settings
   themeMode('theme_mode'),
-  locale('locale'),
 
   // Feature flags
   notificationsEnabled('notifications_enabled');

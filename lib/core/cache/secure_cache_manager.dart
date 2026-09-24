@@ -2,22 +2,17 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Secure key-value storage backed by the platform keychain/keystore.
 /// Use this for sensitive data: tokens, passwords, PII.
-/// Non-sensitive preferences (theme, locale) belong in CacheManager.
+/// Non-sensitive preferences (theme, onboarding) belong in `CacheManager`.
 class SecureCacheManager {
-  SecureCacheManager._internal();
-  static SecureCacheManager? _instance;
+  SecureCacheManager([FlutterSecureStorage? storage])
+      : _storage = storage ?? _defaultStorage;
 
-  static SecureCacheManager get instance {
-    _instance ??= SecureCacheManager._internal();
-    return _instance!;
-  }
-
-  factory SecureCacheManager() => instance;
-
-  static const _storage = FlutterSecureStorage(
+  static const _defaultStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
+
+  final FlutterSecureStorage _storage;
 
   Future<void> write(String key, String value) =>
       _storage.write(key: key, value: value);
