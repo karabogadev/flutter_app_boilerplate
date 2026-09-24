@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../config/routes/app_router.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/extensions/context_extensions.dart';
-import '../../../../core/widgets/app_button.dart';
+import '../../../../core/localization/locale_keys.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../bloc/auth_bloc.dart';
-import '../bloc/auth_event.dart';
-import '../bloc/auth_state.dart';
+import '../widgets/auth_error_listener.dart';
+import '../widgets/auth_submit_button.dart';
 
+/// Navigation after a successful login is handled by the app-level auth
+/// listener in `app.dart`; this page only renders the form and errors.
 @RoutePage()
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _onLoginPressed() {
+  void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
             LoginEvent(
@@ -42,17 +47,14 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  String? _required(String? value) => (value == null || value.isEmpty)
+      ? LocaleKeys.validationRequiredField.tr()
+      : null;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is Authenticated) {
-            context.router.replaceAll([const MainNavigationRoute()]);
-          } else if (state is AuthError) {
-            context.showSnackBar(state.message, isError: true);
-          }
-        },
+      body: AuthErrorListener(
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -62,82 +64,60 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: AppSpacing.xxl),
-                  // Logo or App Name
                   Text(
-                    'Welcome Back',
+                    LocaleKeys.authWelcomeBack.tr(),
                     style: context.textTheme.headlineLarge,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Sign in to continue',
+                    LocaleKeys.authSignInSubtitle.tr(),
                     style: context.textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.xxl),
-
-                  // Email Field
                   AppTextField.email(
                     controller: _emailController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      return null;
-                    },
+                    labelText: LocaleKeys.authEmail.tr(),
+                    hintText: LocaleKeys.authEmailHint.tr(),
+                    validator: _required,
                   ),
                   const SizedBox(height: AppSpacing.md),
-
-                  // Password Field
                   AppTextField.password(
                     controller: _passwordController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      return null;
-                    },
+                    labelText: LocaleKeys.authPassword.tr(),
+                    hintText: LocaleKeys.authPasswordHint.tr(),
+                    validator: _required,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-
-                  // Forgot Password
                   Align(
-                    alignment: Alignment.centerRight,
+                    alignment: AlignmentDirectional.centerEnd,
                     child: TextButton(
                       onPressed: () {
                         // TODO: Navigate to forgot password
                       },
-                      child: const Text('Forgot Password?'),
+                      child: Text(LocaleKeys.authForgotPassword.tr()),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-
-                  // Login Button
-                  BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      return AppButton.primary(
-                        text: 'Login',
-                        isExpanded: true,
-                        isLoading: state is AuthLoading,
-                        onPressed: _onLoginPressed,
-                      );
-                    },
+                  AuthSubmitButton(
+                    text: LocaleKeys.authLogin.tr(),
+                    onPressed: _submit,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-
-                  // Register Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        "Don't have an account?",
-                        style: context.textTheme.bodyMedium,
+                      Flexible(
+                        child: Text(
+                          LocaleKeys.authDontHaveAccount.tr(),
+                          style: context.textTheme.bodyMedium,
+                        ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          context.router.push(const RegisterRoute());
-                        },
-                        child: const Text('Register'),
+                        onPressed: () =>
+                            unawaited(context.router.push(const RegisterRoute())),
+                        child: Text(LocaleKeys.authRegister.tr()),
                       ),
                     ],
                   ),
