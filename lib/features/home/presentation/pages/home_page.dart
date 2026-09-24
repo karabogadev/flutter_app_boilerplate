@@ -135,10 +135,7 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SliverPadding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.lg,
-        bottom: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
       sliver: SliverToBoxAdapter(
         child: Text(title, style: context.textTheme.titleMedium),
       ),
@@ -191,9 +188,7 @@ class _ActivityTile extends StatelessWidget {
         backgroundColor: context.colorScheme.primary.withValues(alpha: 0.1),
         child: Icon(Icons.access_time, color: context.colorScheme.primary),
       ),
-      title: Text(
-        LocaleKeys.homeActivity.tr(namedArgs: {'index': '$hours'}),
-      ),
+      title: Text(LocaleKeys.homeActivity.tr(namedArgs: {'index': '$hours'})),
       subtitle: Text(LocaleKeys.homeHoursAgo.plural(hours)),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {},

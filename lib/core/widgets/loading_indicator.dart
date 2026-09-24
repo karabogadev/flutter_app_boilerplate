@@ -12,17 +12,13 @@ class LoadingIndicator extends StatelessWidget {
     this.strokeWidth = 4,
   });
 
-  const LoadingIndicator.small({
-    super.key,
-    this.color,
-  })  : size = 24,
-        strokeWidth = 2.5;
+  const LoadingIndicator.small({super.key, this.color})
+    : size = 24,
+      strokeWidth = 2.5;
 
-  const LoadingIndicator.large({
-    super.key,
-    this.color,
-  })  : size = 56,
-        strokeWidth = 5;
+  const LoadingIndicator.large({super.key, this.color})
+    : size = 56,
+      strokeWidth = 5;
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +53,7 @@ class LoadingOverlay extends StatelessWidget {
         if (isLoading)
           Container(
             color: barrierColor ?? Colors.black.withValues(alpha: 0.3),
-            child: const Center(
-              child: LoadingIndicator(),
-            ),
+            child: const Center(child: LoadingIndicator()),
           ),
       ],
     );
@@ -81,10 +75,7 @@ class LoadingPage extends StatelessWidget {
             const LoadingIndicator.large(),
             if (message != null) ...[
               const SizedBox(height: 16),
-              Text(
-                message!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text(message!, style: Theme.of(context).textTheme.bodyMedium),
             ],
           ],
         ),

@@ -44,10 +44,8 @@ Future<void> initDependencies() async {
       () => AuthRemoteDataSourceImpl(dioClient: sl()),
     )
     ..registerLazySingleton<AuthLocalDataSource>(
-      () => AuthLocalDataSourceImpl(
-        cacheManager: sl(),
-        secureCacheManager: sl(),
-      ),
+      () =>
+          AuthLocalDataSourceImpl(cacheManager: sl(), secureCacheManager: sl()),
     )
     ..registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(
@@ -65,11 +63,8 @@ Future<void> initDependencies() async {
 
   sl<DioClient>().configureTokenRefresh(
     getRefreshToken: () => sl<AuthLocalDataSource>().getRefreshToken(),
-    saveTokens: (accessToken, refreshToken) =>
-        sl<AuthLocalDataSource>().saveTokens(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-    ),
+    saveTokens: (accessToken, refreshToken) => sl<AuthLocalDataSource>()
+        .saveTokens(accessToken: accessToken, refreshToken: refreshToken),
     onSessionExpired: () => sl<AuthRepository>().expireSession(),
   );
 

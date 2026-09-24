@@ -22,9 +22,8 @@ class ConnectivityState extends Equatable {
     this.lastSyncTime,
   });
 
-  factory ConnectivityState.initial() => const ConnectivityState(
-        status: ConnectivityStatus.online,
-      );
+  factory ConnectivityState.initial() =>
+      const ConnectivityState(status: ConnectivityStatus.online);
 
   bool get isOnline => status == ConnectivityStatus.online;
   bool get isOffline => status == ConnectivityStatus.offline;
@@ -48,12 +47,12 @@ class ConnectivityState extends Equatable {
 
   @override
   List<Object?> get props => [
-        status,
-        pendingOperations,
-        isSyncing,
-        lastError,
-        lastSyncTime,
-      ];
+    status,
+    pendingOperations,
+    isSyncing,
+    lastError,
+    lastSyncTime,
+  ];
 }
 
 /// Cubit for managing connectivity state in the UI.
@@ -92,11 +91,13 @@ class ConnectivityCubit extends Cubit<ConnectivityState> {
   }
 
   void _updateFromOfflineStatus(OfflineStatus status) {
-    emit(state.copyWith(
-      status: status.connectivity,
-      pendingOperations: status.pendingCount,
-      isSyncing: status.isSyncing,
-    ));
+    emit(
+      state.copyWith(
+        status: status.connectivity,
+        pendingOperations: status.pendingCount,
+        isSyncing: status.isSyncing,
+      ),
+    );
   }
 
   /// Manually trigger a sync
@@ -111,17 +112,16 @@ class ConnectivityCubit extends Cubit<ConnectivityState> {
     try {
       final result = await _offlineManager.processQueue();
 
-      emit(state.copyWith(
-        isSyncing: false,
-        pendingOperations: _offlineManager.pendingCount,
-        lastSyncTime: DateTime.now(),
-        lastError: result.hasFailures ? result.message : null,
-      ));
+      emit(
+        state.copyWith(
+          isSyncing: false,
+          pendingOperations: _offlineManager.pendingCount,
+          lastSyncTime: DateTime.now(),
+          lastError: result.hasFailures ? result.message : null,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        isSyncing: false,
-        lastError: e.toString(),
-      ));
+      emit(state.copyWith(isSyncing: false, lastError: e.toString()));
     }
   }
 
@@ -146,8 +146,8 @@ class ConnectivityCubit extends Cubit<ConnectivityState> {
   }
 
   @override
-  Future<void> close() {
-    _subscription?.cancel();
+  Future<void> close() async {
+    await _subscription?.cancel();
     return super.close();
   }
 }

@@ -30,7 +30,8 @@ class CacheManager {
 
   bool? getBool(CacheKeys key) => _prefs.getBool(key.key);
 
-  Future<void> setInt(CacheKeys key, int value) => _prefs.setInt(key.key, value);
+  Future<void> setInt(CacheKeys key, int value) =>
+      _prefs.setInt(key.key, value);
 
   int? getInt(CacheKeys key) => _prefs.getInt(key.key);
 
@@ -55,11 +56,10 @@ class CacheManager {
   Future<void> setList<T extends CacheableModel>(
     CacheKeys key,
     List<T> value,
-  ) =>
-      _prefs.setString(
-        key.key,
-        jsonEncode([for (final item in value) item.toJson()]),
-      );
+  ) => _prefs.setString(
+    key.key,
+    jsonEncode([for (final item in value) item.toJson()]),
+  );
 
   List<T>? getList<T extends CacheableModel>(
     CacheKeys key,

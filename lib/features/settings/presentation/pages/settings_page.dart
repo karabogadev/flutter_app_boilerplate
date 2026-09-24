@@ -28,11 +28,7 @@ class SettingsPage extends StatelessWidget {
           _SectionHeader(LocaleKeys.settingsTheme.tr()),
           const Card(
             child: Column(
-              children: [
-                _ThemeTile(),
-                Divider(height: 1),
-                _LanguageTile(),
-              ],
+              children: [_ThemeTile(), Divider(height: 1), _LanguageTile()],
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -135,10 +131,10 @@ class _ThemeTile extends StatelessWidget {
   const _ThemeTile();
 
   static String _label(ThemeMode mode) => switch (mode) {
-        ThemeMode.system => LocaleKeys.settingsSystemTheme.tr(),
-        ThemeMode.light => LocaleKeys.settingsLightTheme.tr(),
-        ThemeMode.dark => LocaleKeys.settingsDarkTheme.tr(),
-      };
+    ThemeMode.system => LocaleKeys.settingsSystemTheme.tr(),
+    ThemeMode.light => LocaleKeys.settingsLightTheme.tr(),
+    ThemeMode.dark => LocaleKeys.settingsDarkTheme.tr(),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -153,9 +149,9 @@ class _ThemeTile extends StatelessWidget {
       trailing: Switch(
         value: isDark,
         onChanged: (dark) => unawaited(
-          context
-              .read<ThemeCubit>()
-              .setThemeMode(dark ? ThemeMode.dark : ThemeMode.light),
+          context.read<ThemeCubit>().setThemeMode(
+            dark ? ThemeMode.dark : ThemeMode.light,
+          ),
         ),
       ),
       onTap: () => unawaited(_showDialog(context, themeMode)),
@@ -179,7 +175,10 @@ class _ThemeTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               for (final mode in ThemeMode.values)
-                RadioListTile<ThemeMode>(title: Text(_label(mode)), value: mode),
+                RadioListTile<ThemeMode>(
+                  title: Text(_label(mode)),
+                  value: mode,
+                ),
             ],
           ),
         ),

@@ -21,10 +21,7 @@ abstract interface class AuthRepository {
   /// there is no complete session (token + cached user) on the device.
   Future<Result<User?>> restoreSession();
 
-  Future<Result<User>> login({
-    required String email,
-    required String password,
-  });
+  Future<Result<User>> login({required String email, required String password});
 
   Future<Result<User>> register({
     required String email,

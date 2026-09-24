@@ -61,14 +61,14 @@ class AppTextField extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.readOnly = false,
-  })  : obscureText = false,
-        keyboardType = TextInputType.emailAddress,
-        textInputAction = TextInputAction.next,
-        inputFormatters = null,
-        maxLines = 1,
-        maxLength = null,
-        prefixIcon = const Icon(Icons.email_outlined),
-        suffixIcon = null;
+  }) : obscureText = false,
+       keyboardType = TextInputType.emailAddress,
+       textInputAction = TextInputAction.next,
+       inputFormatters = null,
+       maxLines = 1,
+       maxLength = null,
+       prefixIcon = const Icon(Icons.email_outlined),
+       suffixIcon = null;
 
   const AppTextField.password({
     super.key,
@@ -84,14 +84,14 @@ class AppTextField extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.readOnly = false,
-  })  : obscureText = true,
-        keyboardType = TextInputType.visiblePassword,
-        textInputAction = TextInputAction.done,
-        inputFormatters = null,
-        maxLines = 1,
-        maxLength = null,
-        prefixIcon = const Icon(Icons.lock_outlined),
-        suffixIcon = null;
+  }) : obscureText = true,
+       keyboardType = TextInputType.visiblePassword,
+       textInputAction = TextInputAction.done,
+       inputFormatters = null,
+       maxLines = 1,
+       maxLength = null,
+       prefixIcon = const Icon(Icons.lock_outlined),
+       suffixIcon = null;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();

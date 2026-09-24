@@ -23,11 +23,7 @@ final class LoginEvent extends AuthEvent {
 }
 
 final class RegisterEvent extends AuthEvent {
-  const RegisterEvent({
-    required this.email,
-    required this.password,
-    this.name,
-  });
+  const RegisterEvent({required this.email, required this.password, this.name});
 
   final String email;
   final String password;

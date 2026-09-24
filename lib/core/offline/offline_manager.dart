@@ -26,10 +26,10 @@ class OfflineManager {
 
   /// Current offline status
   OfflineStatus get currentStatus => OfflineStatus(
-        connectivity: _connectivityService.currentStatus,
-        pendingCount: _syncQueue.pendingCount,
-        isSyncing: _syncQueue.isProcessing,
-      );
+    connectivity: _connectivityService.currentStatus,
+    pendingCount: _syncQueue.pendingCount,
+    isSyncing: _syncQueue.isProcessing,
+  );
 
   /// Whether auto-sync is enabled. Set this directly to enable/disable auto-sync.
   bool autoSyncEnabled = true;
@@ -174,8 +174,8 @@ class OfflineManager {
     await _connectivitySubscription?.cancel();
     await _queueSubscription?.cancel();
     await _statusController.close();
-    _connectivityService.dispose();
-    _syncQueue.dispose();
+    await _connectivityService.dispose();
+    await _syncQueue.dispose();
   }
 }
 

@@ -10,6 +10,8 @@ analyzer:
     - "**/*.gr.dart"
     - "lib/generated/**"
     - "build/**"
+    - "android/**"
+    - "ios/**"
   errors:
     invalid_annotation_target: ignore
   language:
@@ -20,6 +22,7 @@ analyzer:
 linter:
   rules:
     # Avoid common mistakes
+    - avoid_dynamic_calls
     - avoid_print
     - avoid_empty_else
     - avoid_relative_lib_imports
@@ -29,6 +32,7 @@ linter:
     - avoid_web_libraries_in_flutter
     - cancel_subscriptions
     - close_sinks
+    - discarded_futures
     - literal_only_boolean_expressions
     - no_adjacent_strings_in_list
     - no_duplicate_case_values
@@ -101,6 +105,7 @@ linter:
     - unnecessary_brace_in_string_interps
     - unnecessary_const
     - unnecessary_getters_setters
+    - unnecessary_lambdas
     - unnecessary_late
     - unnecessary_new
     - unnecessary_null_aware_assignments
@@ -113,6 +118,7 @@ linter:
     - unnecessary_this
     - use_full_hex_values_for_flutter_colors
     - use_function_type_syntax_for_parameters
+    - use_super_parameters
     - use_key_in_widget_constructors
     - use_rethrow_when_possible
     - void_checks

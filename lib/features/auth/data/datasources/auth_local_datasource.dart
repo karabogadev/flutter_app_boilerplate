@@ -5,10 +5,7 @@ import '../../../../core/error/exceptions.dart';
 import '../models/user_model.dart';
 
 abstract interface class AuthLocalDataSource {
-  Future<void> saveTokens({
-    required String accessToken,
-    String? refreshToken,
-  });
+  Future<void> saveTokens({required String accessToken, String? refreshToken});
 
   Future<String?> getAccessToken();
 
@@ -28,8 +25,8 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   AuthLocalDataSourceImpl({
     required CacheManager cacheManager,
     required SecureCacheManager secureCacheManager,
-  })  : _cacheManager = cacheManager,
-        _secureCacheManager = secureCacheManager;
+  }) : _cacheManager = cacheManager,
+       _secureCacheManager = secureCacheManager;
 
   final CacheManager _cacheManager;
   final SecureCacheManager _secureCacheManager;
@@ -41,23 +38,24 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<void> saveTokens({
     required String accessToken,
     String? refreshToken,
-  }) =>
-      _guard('save tokens', () async {
-        await _secureCacheManager.write(_accessTokenKey, accessToken);
-        if (refreshToken != null) {
-          await _secureCacheManager.write(_refreshTokenKey, refreshToken);
-        }
-      });
+  }) => _guard('save tokens', () async {
+    await _secureCacheManager.write(_accessTokenKey, accessToken);
+    if (refreshToken != null) {
+      await _secureCacheManager.write(_refreshTokenKey, refreshToken);
+    }
+  });
 
   @override
-  Future<String?> getAccessToken() =>
-      _guard('read access token', () => _secureCacheManager.read(_accessTokenKey));
+  Future<String?> getAccessToken() => _guard(
+    'read access token',
+    () => _secureCacheManager.read(_accessTokenKey),
+  );
 
   @override
   Future<String?> getRefreshToken() => _guard(
-        'read refresh token',
-        () => _secureCacheManager.read(_refreshTokenKey),
-      );
+    'read refresh token',
+    () => _secureCacheManager.read(_refreshTokenKey),
+  );
 
   @override
   Future<void> saveUser(UserModel user) =>
@@ -69,12 +67,12 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
 
   @override
   Future<void> clearAll() => _guard('clear auth data', () async {
-        await Future.wait([
-          _secureCacheManager.delete(_accessTokenKey),
-          _secureCacheManager.delete(_refreshTokenKey),
-          _cacheManager.remove(CacheKeys.user),
-        ]);
-      });
+    await Future.wait([
+      _secureCacheManager.delete(_accessTokenKey),
+      _secureCacheManager.delete(_refreshTokenKey),
+      _cacheManager.remove(CacheKeys.user),
+    ]);
+  });
 
   /// Awaits [body] so asynchronous storage errors are caught too, and wraps
   /// them in a [CacheException].

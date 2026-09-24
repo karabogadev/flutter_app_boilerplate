@@ -54,8 +54,9 @@ class SyncQueue {
   List<SyncOperation> get pendingOperations {
     final now = DateTime.now();
     return _box.values
-        .where((op) =>
-            op.status == SyncStatus.pending && _isReadyForRetry(op, now))
+        .where(
+          (op) => op.status == SyncStatus.pending && _isReadyForRetry(op, now),
+        )
         .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
@@ -64,8 +65,7 @@ class SyncQueue {
       _box.values.where((op) => op.status == SyncStatus.pending).length;
 
   List<SyncOperation> get allOperations =>
-      _box.values.toList()
-        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      _box.values.toList()..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
   /// Exponential backoff: 2^retryCount seconds (2s, 4s, 8s).
   bool _isReadyForRetry(SyncOperation op, DateTime now) {
@@ -96,7 +96,10 @@ class SyncQueue {
     await _box.put(operation.id, operation);
     _notifyQueueChanged();
 
-    AppLogger.debug('Added ${operation.id} (${operation.operationType})', name: 'sync');
+    AppLogger.debug(
+      'Added ${operation.id} (${operation.operationType})',
+      name: 'sync',
+    );
 
     return operation;
   }
@@ -165,7 +168,10 @@ class SyncQueue {
     try {
       final operations = pendingOperations;
 
-      AppLogger.debug('Processing ${operations.length} operations', name: 'sync');
+      AppLogger.debug(
+        'Processing ${operations.length} operations',
+        name: 'sync',
+      );
 
       for (final operation in operations) {
         processed++;
@@ -183,8 +189,7 @@ class SyncQueue {
         processed: processed,
         succeeded: succeeded,
         failed: failed,
-        message:
-            'Processed $processed: $succeeded succeeded, $failed failed',
+        message: 'Processed $processed: $succeeded succeeded, $failed failed',
       );
     } finally {
       _isProcessing = false;
@@ -192,39 +197,39 @@ class SyncQueue {
   }
 
   Future<bool> _processOperation(SyncOperation operation) async {
-    operation.markInProgress();
+    await operation.markInProgress();
 
     try {
       final response = switch (operation.operationType) {
         SyncOperationType.create => await _dioClient.post<dynamic>(
-            operation.endpoint,
-            data: operation.payloadAsMap,
-          ),
+          operation.endpoint,
+          data: operation.payloadAsMap,
+        ),
         SyncOperationType.update => await _dioClient.put<dynamic>(
-            operation.endpoint,
-            data: operation.payloadAsMap,
-          ),
+          operation.endpoint,
+          data: operation.payloadAsMap,
+        ),
         SyncOperationType.delete => await _dioClient.delete<dynamic>(
-            operation.endpoint,
-          ),
+          operation.endpoint,
+        ),
       };
 
       final statusCode = response.statusCode ?? 0;
       if (statusCode >= 200 && statusCode < 300) {
-        operation.markCompleted();
+        await operation.markCompleted();
         return true;
       }
 
-      operation.markFailed('Server returned $statusCode');
+      await operation.markFailed('Server returned $statusCode');
       return false;
     } on NetworkException catch (e) {
-      operation.markFailed(e.message);
+      await operation.markFailed(e.message);
       return false;
     } on ServerException catch (e) {
-      operation.markFailed(e.message);
+      await operation.markFailed(e.message);
       return false;
     } catch (e) {
-      operation.markFailed(e.toString());
+      await operation.markFailed(e.toString());
       return false;
     }
   }
@@ -249,8 +254,9 @@ class SyncQueue {
   }
 
   Future<void> retryAllFailed() async {
-    final failed =
-        _box.values.where((op) => op.status == SyncStatus.failed).toList();
+    final failed = _box.values
+        .where((op) => op.status == SyncStatus.failed)
+        .toList();
 
     for (final op in failed) {
       op.status = SyncStatus.pending;
@@ -270,9 +276,7 @@ class SyncQueue {
     _onQueueChanged.add(pendingCount);
   }
 
-  void dispose() {
-    _onQueueChanged.close();
-  }
+  Future<void> dispose() => _onQueueChanged.close();
 }
 
 class SyncResult {

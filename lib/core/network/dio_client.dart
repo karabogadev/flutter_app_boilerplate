@@ -15,8 +15,8 @@ import 'token_refresh_interceptor.dart';
 /// default `FusedTransformer`, so large payloads don't block the UI thread.
 class DioClient {
   DioClient({Dio? dio, Dio? refreshDio})
-      : _dio = dio ?? Dio(_baseOptions()),
-        _refreshDio = refreshDio ?? Dio(_baseOptions()) {
+    : _dio = dio ?? Dio(_baseOptions()),
+      _refreshDio = refreshDio ?? Dio(_baseOptions()) {
     if (kDebugMode) _dio.interceptors.add(_LoggingInterceptor());
   }
 
@@ -72,29 +72,23 @@ class DioClient {
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _send(
-        () => _dio.get<T>(
-          path,
-          queryParameters: queryParameters,
-          options: options,
-        ),
-      );
+  }) => _send(
+    () => _dio.get<T>(path, queryParameters: queryParameters, options: options),
+  );
 
   Future<Response<T>> post<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-  }) =>
-      _send(
-        () => _dio.post<T>(
-          path,
-          data: data,
-          queryParameters: queryParameters,
-          options: options,
-        ),
-      );
+  }) => _send(
+    () => _dio.post<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    ),
+  );
 
   Future<Response<T>> put<T>(String path, {Object? data, Options? options}) =>
       _send(() => _dio.put<T>(path, data: data, options: options));
@@ -106,8 +100,7 @@ class DioClient {
     String path, {
     Object? data,
     Options? options,
-  }) =>
-      _send(() => _dio.delete<T>(path, data: data, options: options));
+  }) => _send(() => _dio.delete<T>(path, data: data, options: options));
 
   Future<Response<T>> _send<T>(Future<Response<T>> Function() request) async {
     try {
@@ -118,22 +111,25 @@ class DioClient {
   }
 
   Exception _mapDioException(DioException error) => switch (error.type) {
-        DioExceptionType.connectionTimeout ||
-        DioExceptionType.sendTimeout ||
-        DioExceptionType.receiveTimeout ||
-        DioExceptionType.transformTimeout =>
-          const NetworkException(message: 'Connection timed out'),
-        DioExceptionType.connectionError =>
-          const NetworkException(message: 'No internet connection'),
-        DioExceptionType.badResponse => ServerException(
-            message: _extractErrorMessage(error.response),
-            statusCode: error.response?.statusCode,
-          ),
-        DioExceptionType.cancel =>
-          const ServerException(message: 'Request cancelled'),
-        DioExceptionType.badCertificate || DioExceptionType.unknown =>
-          ServerException(message: error.message ?? 'Unknown error'),
-      };
+    DioExceptionType.connectionTimeout ||
+    DioExceptionType.sendTimeout ||
+    DioExceptionType.receiveTimeout ||
+    DioExceptionType.transformTimeout => const NetworkException(
+      message: 'Connection timed out',
+    ),
+    DioExceptionType.connectionError => const NetworkException(
+      message: 'No internet connection',
+    ),
+    DioExceptionType.badResponse => ServerException(
+      message: _extractErrorMessage(error.response),
+      statusCode: error.response?.statusCode,
+    ),
+    DioExceptionType.cancel => const ServerException(
+      message: 'Request cancelled',
+    ),
+    DioExceptionType.badCertificate || DioExceptionType.unknown =>
+      ServerException(message: error.message ?? 'Unknown error'),
+  };
 
   String _extractErrorMessage(Response<dynamic>? response) {
     if (response?.data case {'message': final String message}) return message;

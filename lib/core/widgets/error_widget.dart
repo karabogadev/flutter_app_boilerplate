@@ -48,11 +48,7 @@ class AppErrorWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 64,
-              color: theme.colorScheme.error,
-            ),
+            Icon(icon, size: 64, color: theme.colorScheme.error),
             if (title != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -87,21 +83,12 @@ class ErrorPage extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
 
-  const ErrorPage({
-    super.key,
-    this.title,
-    required this.message,
-    this.onRetry,
-  });
+  const ErrorPage({super.key, this.title, required this.message, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AppErrorWidget(
-        title: title,
-        message: message,
-        onRetry: onRetry,
-      ),
+      body: AppErrorWidget(title: title, message: message, onRetry: onRetry),
     );
   }
 }

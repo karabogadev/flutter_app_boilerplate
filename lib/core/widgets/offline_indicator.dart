@@ -20,11 +20,7 @@ class OfflineBanner extends StatelessWidget {
   final bool showPendingCount;
   final VoidCallback? onTap;
 
-  const OfflineBanner({
-    super.key,
-    this.showPendingCount = true,
-    this.onTap,
-  });
+  const OfflineBanner({super.key, this.showPendingCount = true, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +52,10 @@ class OfflineBanner extends StatelessWidget {
                       Text(
                         '${state.pendingOperations} pending operations',
                         style: TextStyle(
-                          color: _getTextColor(context, state).withValues(alpha: 0.7),
+                          color: _getTextColor(
+                            context,
+                            state,
+                          ).withValues(alpha: 0.7),
                           fontSize: 12,
                         ),
                       ),
@@ -131,11 +130,7 @@ class SyncingIcon extends StatefulWidget {
   final Color color;
   final double size;
 
-  const SyncingIcon({
-    super.key,
-    this.color = Colors.white,
-    this.size = 24,
-  });
+  const SyncingIcon({super.key, this.color = Colors.white, this.size = 24});
 
   @override
   State<SyncingIcon> createState() => _SyncingIconState();
@@ -164,11 +159,7 @@ class _SyncingIconState extends State<SyncingIcon>
   Widget build(BuildContext context) {
     return RotationTransition(
       turns: _controller,
-      child: Icon(
-        Icons.sync,
-        color: widget.color,
-        size: widget.size,
-      ),
+      child: Icon(Icons.sync, color: widget.color, size: widget.size),
     );
   }
 }
@@ -177,10 +168,7 @@ class _SyncingIconState extends State<SyncingIcon>
 class OfflineIndicatorDot extends StatelessWidget {
   final double size;
 
-  const OfflineIndicatorDot({
-    super.key,
-    this.size = 8,
-  });
+  const OfflineIndicatorDot({super.key, this.size = 8});
 
   @override
   Widget build(BuildContext context) {
@@ -201,10 +189,7 @@ class OfflineIndicatorDot extends StatelessWidget {
         return Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         );
       },
     );
@@ -232,9 +217,7 @@ class OfflineAppBarIndicator extends StatelessWidget {
                 const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else if (state.isOffline)
                 const Icon(Icons.cloud_off, size: 20)
@@ -276,16 +259,13 @@ class OfflineAwareButton extends StatelessWidget {
           onTap: isDisabled
               ? () {
                   if (offlineMessage != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(offlineMessage!)),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(offlineMessage!)));
                   }
                 }
               : onPressed,
-          child: Opacity(
-            opacity: isDisabled ? 0.5 : 1.0,
-            child: child,
-          ),
+          child: Opacity(opacity: isDisabled ? 0.5 : 1.0, child: child),
         );
       },
     );

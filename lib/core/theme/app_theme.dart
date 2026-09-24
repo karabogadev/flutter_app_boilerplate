@@ -65,8 +65,9 @@ abstract final class AppTheme {
         centerTitle: true,
         backgroundColor: colors.surface,
         foregroundColor: colors.textPrimary,
-        systemOverlayStyle:
-            isLight ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+        systemOverlayStyle: isLight
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light,
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(
@@ -118,8 +119,10 @@ abstract final class AppTheme {
           borderRadius: smallRadius,
           borderSide: BorderSide(color: colors.error),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         hintStyle: textTheme.bodyMedium?.copyWith(color: colors.textHint),
       ),
       snackBarTheme: SnackBarThemeData(

@@ -16,12 +16,11 @@ abstract final class AppLogger {
     Object? error,
     StackTrace? stackTrace,
     String name = 'app',
-  }) =>
-      developer.log(
-        message,
-        name: name,
-        level: 1000,
-        error: error,
-        stackTrace: stackTrace,
-      );
+  }) => developer.log(
+    message,
+    name: name,
+    level: 1000,
+    error: error,
+    stackTrace: stackTrace,
+  );
 }

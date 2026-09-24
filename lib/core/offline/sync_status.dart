@@ -32,11 +32,7 @@ enum SyncStatus {
 }
 
 /// Overall connectivity status of the app
-enum ConnectivityStatus {
-  online,
-  offline,
-  syncing,
-}
+enum ConnectivityStatus { online, offline, syncing }
 
 extension SyncOperationTypeX on SyncOperationType {
   String get displayName {

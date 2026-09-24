@@ -4,10 +4,8 @@ import '../constants/api_constants.dart';
 import '../logging/app_logger.dart';
 
 typedef GetRefreshToken = Future<String?> Function();
-typedef SaveTokens = Future<void> Function(
-  String accessToken,
-  String? refreshToken,
-);
+typedef SaveTokens =
+    Future<void> Function(String accessToken, String? refreshToken);
 typedef OnSessionExpired = Future<void> Function();
 
 /// Refreshes the access token when an authenticated request gets a 401, then
@@ -27,11 +25,11 @@ class TokenRefreshInterceptor extends Interceptor {
     required GetRefreshToken getRefreshToken,
     required SaveTokens saveTokens,
     required OnSessionExpired onSessionExpired,
-  })  : _dio = dio,
-        _refreshDio = refreshDio,
-        _getRefreshToken = getRefreshToken,
-        _saveTokens = saveTokens,
-        _onSessionExpired = onSessionExpired;
+  }) : _dio = dio,
+       _refreshDio = refreshDio,
+       _getRefreshToken = getRefreshToken,
+       _saveTokens = saveTokens,
+       _onSessionExpired = onSessionExpired;
 
   static const _retriedKey = 'tokenRefreshRetried';
 
@@ -60,8 +58,8 @@ class TokenRefreshInterceptor extends Interceptor {
     final currentAuthHeader = _dio.options.headers[ApiConstants.authorization];
     final freshAuthHeader =
         currentAuthHeader is String && currentAuthHeader != sentAuthHeader
-            ? currentAuthHeader
-            : await _refresh();
+        ? currentAuthHeader
+        : await _refresh();
 
     if (freshAuthHeader == null) return handler.next(err);
 
@@ -83,10 +81,8 @@ class TokenRefreshInterceptor extends Interceptor {
 
   /// Returns the new `Authorization` header value, or null if the token
   /// could not be refreshed.
-  Future<String?> _refresh() =>
-      _refreshInFlight ??= _performRefresh().whenComplete(
-        () => _refreshInFlight = null,
-      );
+  Future<String?> _refresh() => _refreshInFlight ??= _performRefresh()
+      .whenComplete(() => _refreshInFlight = null);
 
   Future<String?> _performRefresh() async {
     final refreshToken = await _getRefreshToken();

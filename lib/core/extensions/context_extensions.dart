@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 extension ContextExtensions on BuildContext {
@@ -38,11 +40,11 @@ extension ContextExtensions on BuildContext {
 
   // Loading dialog
   void showLoadingDialog() {
-    showDialog<void>(
-      context: this,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+    unawaited(
+      showDialog<void>(
+        context: this,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       ),
     );
   }

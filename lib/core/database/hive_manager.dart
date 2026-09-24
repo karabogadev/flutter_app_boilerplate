@@ -151,9 +151,7 @@ class HiveManager {
 
   void _ensureInitialized() {
     if (!_isInitialized) {
-      throw StateError(
-        'HiveManager is not initialized. Call init() first.',
-      );
+      throw StateError('HiveManager is not initialized. Call init() first.');
     }
   }
 }

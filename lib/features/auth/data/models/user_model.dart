@@ -23,21 +23,21 @@ abstract class UserModel with _$UserModel implements CacheableModel {
 
   // Convert to entity
   User toEntity() => User(
-        id: id,
-        email: email,
-        name: name,
-        avatarUrl: avatarUrl,
-        createdAt: createdAt,
-      );
+    id: id,
+    email: email,
+    name: name,
+    avatarUrl: avatarUrl,
+    createdAt: createdAt,
+  );
 
   // Create from entity
   factory UserModel.fromEntity(User entity) => UserModel(
-        id: entity.id,
-        email: entity.email,
-        name: entity.name,
-        avatarUrl: entity.avatarUrl,
-        createdAt: entity.createdAt,
-      );
+    id: entity.id,
+    email: entity.email,
+    name: entity.name,
+    avatarUrl: entity.avatarUrl,
+    createdAt: entity.createdAt,
+  );
 }
 
 @freezed

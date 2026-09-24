@@ -45,12 +45,12 @@ class _RegisterPageState extends State<RegisterPage> {
     if (_formKey.currentState?.validate() ?? false) {
       final name = _nameController.text.trim();
       context.read<AuthBloc>().add(
-            RegisterEvent(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-              name: name.isNotEmpty ? name : null,
-            ),
-          );
+        RegisterEvent(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          name: name.isNotEmpty ? name : null,
+        ),
+      );
     }
   }
 

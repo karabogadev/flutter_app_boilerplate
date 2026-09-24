@@ -40,17 +40,13 @@ class AppCachedImage extends StatelessWidget {
       fit: fit,
       memCacheWidth: cacheWidth,
       memCacheHeight: cacheWidth == null ? toCacheSize(height) : null,
-      placeholder: (context, url) =>
-          placeholder ?? _buildPlaceholder(context),
+      placeholder: (context, url) => placeholder ?? _buildPlaceholder(context),
       errorWidget: (context, url, error) =>
           errorWidget ?? _buildErrorWidget(context),
     );
 
     if (borderRadius != null) {
-      return ClipRRect(
-        borderRadius: borderRadius!,
-        child: image,
-      );
+      return ClipRRect(borderRadius: borderRadius!, child: image);
     }
 
     return image;
@@ -61,11 +57,7 @@ class AppCachedImage extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
       highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
-      child: Container(
-        width: width,
-        height: height,
-        color: Colors.white,
-      ),
+      child: Container(width: width, height: height, color: Colors.white),
     );
   }
 
@@ -74,10 +66,7 @@ class AppCachedImage extends StatelessWidget {
       width: width,
       height: height,
       color: Colors.grey[300],
-      child: const Icon(
-        Icons.broken_image_outlined,
-        color: Colors.grey,
-      ),
+      child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
     );
   }
 }

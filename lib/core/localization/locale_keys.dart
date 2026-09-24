@@ -47,8 +47,10 @@ abstract class LocaleKeys {
   // Validation
   static const String validationRequiredField = 'validation.required_field';
   static const String validationInvalidEmail = 'validation.invalid_email';
-  static const String validationPasswordTooShort = 'validation.password_too_short';
-  static const String validationPasswordsDontMatch = 'validation.passwords_dont_match';
+  static const String validationPasswordTooShort =
+      'validation.password_too_short';
+  static const String validationPasswordsDontMatch =
+      'validation.passwords_dont_match';
 
   // Onboarding
   static const String onboardingTitle1 = 'onboarding.title_1';
@@ -62,6 +64,7 @@ abstract class LocaleKeys {
 
   // Home
   static const String homeTitle = 'home.title';
+
   /// Usage: LocaleKeys.homeWelcome.tr(namedArgs: {'name': userName})
   static const String homeWelcome = 'home.welcome';
   static const String homeWelcomeBack = 'home.welcome_back';
@@ -71,8 +74,10 @@ abstract class LocaleKeys {
   static const String homeNotifications = 'home.notifications';
   static const String homeFavorites = 'home.favorites';
   static const String homeHistory = 'home.history';
+
   /// Usage: LocaleKeys.homeActivity.tr(namedArgs: {'index': '1'})
   static const String homeActivity = 'home.activity';
+
   /// Plural. Usage: LocaleKeys.homeHoursAgo.plural(hours)
   static const String homeHoursAgo = 'home.hours_ago';
 

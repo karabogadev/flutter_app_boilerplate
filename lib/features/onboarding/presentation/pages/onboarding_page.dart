@@ -13,7 +13,11 @@ import '../../../../core/localization/locale_keys.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../settings/data/repositories/settings_repository.dart';
 
-typedef _OnboardingItem = ({String titleKey, String descriptionKey, IconData icon});
+typedef _OnboardingItem = ({
+  String titleKey,
+  String descriptionKey,
+  IconData icon,
+});
 
 const _items = <_OnboardingItem>[
   (
@@ -102,10 +106,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
             ValueListenableBuilder<int>(
               valueListenable: _currentPage,
-              builder: (context, page, _) => _PageIndicator(
-                count: _items.length,
-                current: page,
-              ),
+              builder: (context, page, _) =>
+                  _PageIndicator(count: _items.length, current: page),
             ),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),

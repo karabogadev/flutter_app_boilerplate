@@ -39,11 +39,11 @@ class _LoginPageState extends State<LoginPage> {
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
-            LoginEvent(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
+        LoginEvent(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
 
@@ -115,8 +115,9 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () =>
-                            unawaited(context.router.push(const RegisterRoute())),
+                        onPressed: () => unawaited(
+                          context.router.push(const RegisterRoute()),
+                        ),
                         child: Text(LocaleKeys.authRegister.tr()),
                       ),
                     ],

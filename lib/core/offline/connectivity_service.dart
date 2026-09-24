@@ -55,16 +55,16 @@ class ConnectivityService {
   }
 
   /// Handle connectivity changes from the platform
-  Future<void> _handleConnectivityChange(List<ConnectivityResult> results) async {
+  Future<void> _handleConnectivityChange(
+    List<ConnectivityResult> results,
+  ) async {
     _lastResults = results;
     await _updateStatus(results);
   }
 
   /// Update the connectivity status based on results
   Future<void> _updateStatus(List<ConnectivityResult> results) async {
-    final hasNetwork = results.any(
-      (r) => r != ConnectivityResult.none,
-    );
+    final hasNetwork = results.any((r) => r != ConnectivityResult.none);
 
     if (!hasNetwork) {
       _setStatus(ConnectivityStatus.offline);
@@ -73,15 +73,18 @@ class ConnectivityService {
 
     // Verify actual internet connectivity
     final hasInternet = await _checkInternetAccess();
-    _setStatus(hasInternet ? ConnectivityStatus.online : ConnectivityStatus.offline);
+    _setStatus(
+      hasInternet ? ConnectivityStatus.online : ConnectivityStatus.offline,
+    );
   }
 
   /// Check if there's actual internet access by pinging a reliable host
   Future<bool> _checkInternetAccess() async {
     try {
       // Try to resolve a reliable domain
-      final result = await InternetAddress.lookup('google.com')
-          .timeout(const Duration(seconds: 5));
+      final result = await InternetAddress.lookup(
+        'google.com',
+      ).timeout(const Duration(seconds: 5));
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } on SocketException catch (_) {
       return false;
@@ -121,7 +124,8 @@ class ConnectivityService {
 
   /// Get a human-readable description of the connection type
   String getConnectionTypeDescription() {
-    if (_lastResults.isEmpty || _lastResults.contains(ConnectivityResult.none)) {
+    if (_lastResults.isEmpty ||
+        _lastResults.contains(ConnectivityResult.none)) {
       return 'No connection';
     }
 
@@ -150,8 +154,8 @@ class ConnectivityService {
   }
 
   /// Dispose the service
-  void dispose() {
-    _subscription?.cancel();
-    _statusController.close();
+  Future<void> dispose() async {
+    await _subscription?.cancel();
+    await _statusController.close();
   }
 }

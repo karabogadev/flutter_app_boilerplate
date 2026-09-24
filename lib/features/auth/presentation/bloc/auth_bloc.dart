@@ -17,8 +17,8 @@ part 'auth_state.dart';
 /// rejected refresh token) is reflected in the UI too.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({required AuthRepository authRepository})
-      : _authRepository = authRepository,
-        super(const AuthInitial()) {
+    : _authRepository = authRepository,
+      super(const AuthInitial()) {
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
     on<LoginEvent>(_onLogin);
     on<RegisterEvent>(_onRegister);
@@ -49,18 +49,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogin(LoginEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
     _emitSignInResult(
-      await _authRepository.login(
-        email: event.email,
-        password: event.password,
-      ),
+      await _authRepository.login(email: event.email, password: event.password),
       emit,
     );
   }
 
-  Future<void> _onRegister(
-    RegisterEvent event,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _onRegister(RegisterEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
     _emitSignInResult(
       await _authRepository.register(

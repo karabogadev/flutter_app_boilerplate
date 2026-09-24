@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Non-sensitive preferences (theme, onboarding) belong in `CacheManager`.
 class SecureCacheManager {
   SecureCacheManager([FlutterSecureStorage? storage])
-      : _storage = storage ?? _defaultStorage;
+    : _storage = storage ?? _defaultStorage;
 
   static const _defaultStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(),

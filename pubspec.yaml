@@ -8,39 +8,39 @@ environment:
   flutter: '>=3.35.0'
 
 dependencies:
-  auto_route: ^11.1.0
-  bloc: ^9.1.0
-  cached_network_image: ^3.4.1
-  connectivity_plus: ^6.1.1
-  dio: ^5.9.0
+  auto_route: ^11.2.0
+  bloc: ^9.2.1
+  cached_network_image: ^4.0.2
+  connectivity_plus: ^7.3.1
+  dio: ^5.11.1
   easy_localization: ^3.0.8
-  equatable: ^2.0.7
+  equatable: ^3.0.0
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
-  flutter_secure_storage: ^10.0.0
+  flutter_secure_storage: ^11.2.0
   freezed_annotation: ^3.1.0
-  get_it: ^9.2.0
-  hive_ce: ^2.10.1
-  hive_ce_flutter: ^2.2.0
-  json_annotation: ^4.9.0
-  shared_preferences: ^2.5.4
-  shimmer: ^3.0.0
-  uuid: ^4.5.1
+  get_it: ^9.3.0
+  hive_ce: ^2.20.0
+  hive_ce_flutter: ^2.3.4
+  json_annotation: ^4.12.0
+  shared_preferences: ^2.5.5
+  shimmer: ^4.0.0
+  uuid: ^4.6.0
 
 dev_dependencies:
-  auto_route_generator: ^10.4.0
+  auto_route_generator: ^10.6.0
   bloc_test: ^10.0.0
-  build_runner: ^2.10.4
+  build_runner: ^2.15.1
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
   freezed: ^3.2.3
-  hive_ce_generator: ^1.8.0
+  hive_ce_generator: ^1.11.2
   integration_test:
     sdk: flutter
-  json_serializable: ^6.9.4
-  mocktail: ^1.0.4
+  json_serializable: ^6.14.1
+  mocktail: ^1.0.5
 
 flutter:
   uses-material-design: true

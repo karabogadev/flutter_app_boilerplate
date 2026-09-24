@@ -87,20 +87,20 @@ class SyncOperation extends HiveObject {
   }
 
   /// Mark operation as in progress
-  void markInProgress() {
+  Future<void> markInProgress() async {
     status = SyncStatus.inProgress;
     lastAttemptAt = DateTime.now();
-    save();
+    await save();
   }
 
   /// Mark operation as completed
-  void markCompleted() {
+  Future<void> markCompleted() async {
     status = SyncStatus.completed;
-    save();
+    await save();
   }
 
   /// Mark operation as failed with retry
-  void markFailed(String error, {int maxRetries = 3}) {
+  Future<void> markFailed(String error, {int maxRetries = 3}) async {
     retryCount++;
     errorMessage = error;
     lastAttemptAt = DateTime.now();
@@ -110,7 +110,7 @@ class SyncOperation extends HiveObject {
     } else {
       status = SyncStatus.pending;
     }
-    save();
+    await save();
   }
 
   /// Check if operation can be retried
@@ -159,24 +159,24 @@ class SyncMetadata extends HiveObject {
   });
 
   /// Mark entity as modified locally
-  void markDirty() {
+  Future<void> markDirty() async {
     isDirty = true;
     version++;
-    save();
+    await save();
   }
 
   /// Mark entity as synced with server
-  void markSynced() {
+  Future<void> markSynced() async {
     isDirty = false;
     lastSyncedAt = DateTime.now();
-    save();
+    await save();
   }
 
   /// Mark entity as deleted (soft delete)
-  void markDeleted() {
+  Future<void> markDeleted() async {
     isDeleted = true;
     isDirty = true;
-    save();
+    await save();
   }
 
   /// Unique key for storing metadata

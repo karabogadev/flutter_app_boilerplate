@@ -15,10 +15,10 @@ class AuthRepositoryImpl implements AuthRepository {
     required AuthLocalDataSource localDataSource,
     required DioClient dioClient,
     required SyncQueue syncQueue,
-  })  : _remote = remoteDataSource,
-        _local = localDataSource,
-        _dioClient = dioClient,
-        _syncQueue = syncQueue;
+  }) : _remote = remoteDataSource,
+       _local = localDataSource,
+       _dioClient = dioClient,
+       _syncQueue = syncQueue;
 
   final AuthRemoteDataSource _remote;
   final AuthLocalDataSource _local;
@@ -39,48 +39,46 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Result<User?>> restoreSession() => Result.guard(() async {
-        final token = await _local.getAccessToken();
-        final user = token == null ? null : _local.getUser()?.toEntity();
+    final token = await _local.getAccessToken();
+    final user = token == null ? null : _local.getUser()?.toEntity();
 
-        if (token == null || user == null) {
-          // A token without a profile (or vice versa) is not a usable
-          // session; wipe the leftovers so every check agrees.
-          if (token != null || _local.getUser() != null) {
-            await _local.clearAll();
-          }
-          _setUser(null);
-          return null;
-        }
+    if (token == null || user == null) {
+      // A token without a profile (or vice versa) is not a usable
+      // session; wipe the leftovers so every check agrees.
+      if (token != null || _local.getUser() != null) {
+        await _local.clearAll();
+      }
+      _setUser(null);
+      return null;
+    }
 
-        _dioClient.setAuthToken(token);
-        _setUser(user);
-        return user;
-      });
+    _dioClient.setAuthToken(token);
+    _setUser(user);
+    return user;
+  });
 
   @override
   Future<Result<User>> login({
     required String email,
     required String password,
-  }) =>
-      Result.guard(() async {
-        final response = await _remote.login(email: email, password: password);
-        return _startSession(response);
-      });
+  }) => Result.guard(() async {
+    final response = await _remote.login(email: email, password: password);
+    return _startSession(response);
+  });
 
   @override
   Future<Result<User>> register({
     required String email,
     required String password,
     String? name,
-  }) =>
-      Result.guard(() async {
-        final response = await _remote.register(
-          email: email,
-          password: password,
-          name: name,
-        );
-        return _startSession(response);
-      });
+  }) => Result.guard(() async {
+    final response = await _remote.register(
+      email: email,
+      password: password,
+      name: name,
+    );
+    return _startSession(response);
+  });
 
   @override
   Future<Result<void>> logout() async {
