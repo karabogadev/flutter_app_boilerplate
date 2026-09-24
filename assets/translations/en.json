@@ -28,7 +28,17 @@
     "already_have_account": "Already have an account?",
     "login_success": "Login successful",
     "register_success": "Registration successful",
-    "logout_success": "Logged out successfully"
+    "logout_success": "Logged out successfully",
+    "welcome_back": "Welcome Back",
+    "sign_in_subtitle": "Sign in to continue",
+    "create_account": "Create Account",
+    "sign_up_subtitle": "Sign up to get started",
+    "name": "Name",
+    "name_hint": "Enter your name",
+    "email_hint": "Enter your email",
+    "password_hint": "Enter your password",
+    "confirm_password_hint": "Confirm your password",
+    "logout_confirm": "Are you sure you want to logout?"
   },
   "validation": {
     "required_field": "This field is required",
@@ -48,7 +58,19 @@
   },
   "home": {
     "title": "Home",
-    "welcome": "Welcome, {name}!"
+    "welcome": "Welcome, {name}!",
+    "welcome_back": "Welcome back,",
+    "quick_actions": "Quick Actions",
+    "recent_activity": "Recent Activity",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "favorites": "Favorites",
+    "history": "History",
+    "activity": "Activity {index}",
+    "hours_ago": {
+      "one": "{} hour ago",
+      "other": "{} hours ago"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -61,7 +83,10 @@
     "version": "Version",
     "light_theme": "Light",
     "dark_theme": "Dark",
-    "system_theme": "System"
+    "system_theme": "System",
+    "account": "Account",
+    "profile": "Profile",
+    "security": "Security"
   },
   "errors": {
     "server_error": "Server error. Please try again later.",

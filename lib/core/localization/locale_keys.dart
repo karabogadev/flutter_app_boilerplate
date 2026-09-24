@@ -1,5 +1,5 @@
 /// Type-safe translation keys for easy_localization
-/// Usage: LocaleKeys.auth_login.tr()
+/// Usage: LocaleKeys.authLogin.tr()
 abstract class LocaleKeys {
   // App
   static const String appName = 'app_name';
@@ -33,6 +33,16 @@ abstract class LocaleKeys {
   static const String authLoginSuccess = 'auth.login_success';
   static const String authRegisterSuccess = 'auth.register_success';
   static const String authLogoutSuccess = 'auth.logout_success';
+  static const String authWelcomeBack = 'auth.welcome_back';
+  static const String authSignInSubtitle = 'auth.sign_in_subtitle';
+  static const String authCreateAccount = 'auth.create_account';
+  static const String authSignUpSubtitle = 'auth.sign_up_subtitle';
+  static const String authName = 'auth.name';
+  static const String authNameHint = 'auth.name_hint';
+  static const String authEmailHint = 'auth.email_hint';
+  static const String authPasswordHint = 'auth.password_hint';
+  static const String authConfirmPasswordHint = 'auth.confirm_password_hint';
+  static const String authLogoutConfirm = 'auth.logout_confirm';
 
   // Validation
   static const String validationRequiredField = 'validation.required_field';
@@ -54,6 +64,17 @@ abstract class LocaleKeys {
   static const String homeTitle = 'home.title';
   /// Usage: LocaleKeys.homeWelcome.tr(namedArgs: {'name': userName})
   static const String homeWelcome = 'home.welcome';
+  static const String homeWelcomeBack = 'home.welcome_back';
+  static const String homeQuickActions = 'home.quick_actions';
+  static const String homeRecentActivity = 'home.recent_activity';
+  static const String homeProfile = 'home.profile';
+  static const String homeNotifications = 'home.notifications';
+  static const String homeFavorites = 'home.favorites';
+  static const String homeHistory = 'home.history';
+  /// Usage: LocaleKeys.homeActivity.tr(namedArgs: {'index': '1'})
+  static const String homeActivity = 'home.activity';
+  /// Plural. Usage: LocaleKeys.homeHoursAgo.plural(hours)
+  static const String homeHoursAgo = 'home.hours_ago';
 
   // Settings
   static const String settingsTitle = 'settings.title';
@@ -67,6 +88,9 @@ abstract class LocaleKeys {
   static const String settingsLightTheme = 'settings.light_theme';
   static const String settingsDarkTheme = 'settings.dark_theme';
   static const String settingsSystemTheme = 'settings.system_theme';
+  static const String settingsAccount = 'settings.account';
+  static const String settingsProfile = 'settings.profile';
+  static const String settingsSecurity = 'settings.security';
 
   // Errors
   static const String errorsServerError = 'errors.server_error';

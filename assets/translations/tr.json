@@ -28,7 +28,17 @@
     "already_have_account": "Zaten hesabınız var mı?",
     "login_success": "Giriş başarılı",
     "register_success": "Kayıt başarılı",
-    "logout_success": "Çıkış yapıldı"
+    "logout_success": "Çıkış yapıldı",
+    "welcome_back": "Tekrar Hoş Geldiniz",
+    "sign_in_subtitle": "Devam etmek için giriş yapın",
+    "create_account": "Hesap Oluştur",
+    "sign_up_subtitle": "Başlamak için kayıt olun",
+    "name": "Ad",
+    "name_hint": "Adınızı girin",
+    "email_hint": "E-posta adresinizi girin",
+    "password_hint": "Şifrenizi girin",
+    "confirm_password_hint": "Şifrenizi tekrar girin",
+    "logout_confirm": "Çıkış yapmak istediğinize emin misiniz?"
   },
   "validation": {
     "required_field": "Bu alan zorunludur",
@@ -48,7 +58,19 @@
   },
   "home": {
     "title": "Ana Sayfa",
-    "welcome": "Hoş geldin, {name}!"
+    "welcome": "Hoş geldin, {name}!",
+    "welcome_back": "Tekrar hoş geldin,",
+    "quick_actions": "Hızlı İşlemler",
+    "recent_activity": "Son Etkinlikler",
+    "profile": "Profil",
+    "notifications": "Bildirimler",
+    "favorites": "Favoriler",
+    "history": "Geçmiş",
+    "activity": "Etkinlik {index}",
+    "hours_ago": {
+      "one": "{} saat önce",
+      "other": "{} saat önce"
+    }
   },
   "settings": {
     "title": "Ayarlar",
@@ -61,7 +83,10 @@
     "version": "Versiyon",
     "light_theme": "Açık",
     "dark_theme": "Koyu",
-    "system_theme": "Sistem"
+    "system_theme": "Sistem",
+    "account": "Hesap",
+    "profile": "Profil",
+    "security": "Güvenlik"
   },
   "errors": {
     "server_error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin.",

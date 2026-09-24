@@ -1,27 +1,23 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 
-import '../../features/auth/data/datasources/auth_local_datasource.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import 'app_router.dart';
 
+/// Keeps signed-out users out of guarded routes.
+///
+/// Reads the in-memory session from [AuthRepository], so it runs
+/// synchronously and never hits secure storage on navigation.
 class AuthGuard extends AutoRouteGuard {
-  AuthGuard(this._authLocalDataSource);
+  AuthGuard(this._authRepository);
 
-  final AuthLocalDataSource _authLocalDataSource;
+  final AuthRepository _authRepository;
 
   @override
-  Future<void> onNavigation(
-    NavigationResolver resolver,
-    StackRouter router,
-  ) async {
-    final token = await _authLocalDataSource.getAccessToken();
-    if (token != null) {
-      resolver.next(true);
+  void onNavigation(NavigationResolver resolver, StackRouter router) {
+    if (_authRepository.isAuthenticated) {
+      resolver.next();
     } else {
-      // Push login and block the original navigation.
-      // Using pushPath avoids a circular import with app_router.gr.dart.
-      unawaited(router.pushPath('/login'));
-      resolver.next(false);
+      resolver.redirectUntil(const LoginRoute(), replace: true);
     }
   }
 }
