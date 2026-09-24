@@ -1,8 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import '../database/hive_manager.dart';
+import '../logging/app_logger.dart';
 import 'connectivity_service.dart';
 import 'sync_queue.dart';
 import 'sync_status.dart';
@@ -17,6 +16,7 @@ class OfflineManager {
   final SyncQueue _syncQueue;
 
   StreamSubscription<ConnectivityStatus>? _connectivitySubscription;
+  StreamSubscription<int>? _queueSubscription;
   final _statusController = StreamController<OfflineStatus>.broadcast();
 
   bool _isInitialized = false;
@@ -44,25 +44,21 @@ class OfflineManager {
   Future<void> init() async {
     if (_isInitialized) return;
 
-    // Initialize dependencies
     await _hiveManager.init();
-    await _connectivityService.init();
+    _connectivityService.init();
 
     // Reset any operations left in-progress from a previous session.
     await _syncQueue.recoverInProgressOperations();
 
-    // Listen to connectivity changes
     _connectivitySubscription = _connectivityService.onStatusChanged.listen(
       _handleConnectivityChange,
     );
-
-    // Listen to queue changes
-    _syncQueue.onQueueChanged.listen((_) => _emitStatus());
+    _queueSubscription = _syncQueue.onQueueChanged.listen((_) => _emitStatus());
 
     _isInitialized = true;
     _emitStatus();
 
-    debugPrint('OfflineManager: initialized');
+    AppLogger.debug('initialized', name: 'offline');
   }
 
   /// Handle connectivity status changes
@@ -174,9 +170,10 @@ class OfflineManager {
   }
 
   /// Dispose resources
-  void dispose() {
-    _connectivitySubscription?.cancel();
-    _statusController.close();
+  Future<void> dispose() async {
+    await _connectivitySubscription?.cancel();
+    await _queueSubscription?.cancel();
+    await _statusController.close();
     _connectivityService.dispose();
     _syncQueue.dispose();
   }

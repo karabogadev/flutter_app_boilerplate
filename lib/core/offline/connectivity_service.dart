@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/foundation.dart';
+
+import '../logging/app_logger.dart';
 
 import 'sync_status.dart';
 
@@ -38,24 +39,19 @@ class ConnectivityService {
   /// Last known connectivity results (wifi, mobile, etc.)
   List<ConnectivityResult> get lastResults => _lastResults;
 
-  /// Initialize the connectivity service
-  Future<void> init() async {
+  /// Starts listening for connectivity changes.
+  ///
+  /// Returns immediately: the first check (which includes a DNS lookup with a
+  /// timeout of up to 5 s) runs in the background so it never delays app
+  /// start. Until it completes the status is optimistically [online].
+  void init() {
     if (_isInitialized) return;
+    _isInitialized = true;
 
-    // Get initial status
-    _lastResults = await _connectivity.checkConnectivity();
-    await _updateStatus(_lastResults);
-
-    // Listen for changes
     _subscription = _connectivity.onConnectivityChanged.listen(
       _handleConnectivityChange,
     );
-
-    _isInitialized = true;
-
-    if (kDebugMode) {
-      print('ConnectivityService: Initialized with status $_currentStatus');
-    }
+    unawaited(checkConnectivity());
   }
 
   /// Handle connectivity changes from the platform
@@ -101,10 +97,7 @@ class ConnectivityService {
     if (_currentStatus != status) {
       _currentStatus = status;
       _statusController.add(status);
-
-      if (kDebugMode) {
-        print('ConnectivityService: Status changed to $status');
-      }
+      AppLogger.debug('Status changed to $status', name: 'connectivity');
     }
   }
 

@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
+import '../logging/app_logger.dart';
 import '../offline/sync_operation.dart';
 import '../offline/sync_status.dart';
 import 'hive_boxes.dart';
@@ -32,7 +32,7 @@ class HiveManager {
 
     _isInitialized = true;
 
-    debugPrint('HiveManager: initialized');
+    AppLogger.debug('initialized', name: 'hive');
   }
 
   /// Register all TypeAdapters for custom objects
@@ -58,13 +58,12 @@ class HiveManager {
     // }
   }
 
-  /// Open all required boxes at startup
+  /// Opens the boxes the sync queue needs at startup. Feature boxes should
+  /// be opened on demand with [openBox] / [openLazyBox].
   Future<void> _openBoxes() async {
     await Future.wait([
       Hive.openBox<SyncOperation>(HiveBoxes.syncQueue),
       Hive.openBox<SyncMetadata>(HiveBoxes.syncMetadata),
-      Hive.openBox<dynamic>(HiveBoxes.settings),
-      Hive.openBox<dynamic>(HiveBoxes.cache),
     ]);
   }
 
@@ -82,18 +81,6 @@ class HiveManager {
   Box<SyncMetadata> getSyncMetadataBox() {
     _ensureInitialized();
     return Hive.box<SyncMetadata>(HiveBoxes.syncMetadata);
-  }
-
-  /// Get the settings box
-  Box<dynamic> getSettingsBox() {
-    _ensureInitialized();
-    return Hive.box(HiveBoxes.settings);
-  }
-
-  /// Get the cache box
-  Box<dynamic> getCacheBox() {
-    _ensureInitialized();
-    return Hive.box(HiveBoxes.cache);
   }
 
   /// Open a typed box on demand
@@ -118,7 +105,7 @@ class HiveManager {
   // UTILITY METHODS
   // ─────────────────────────────────────────────────────────────
 
-  /// Clear all data from all boxes (useful for logout)
+  /// Clear all data from the core boxes
   Future<void> clearAll() async {
     _ensureInitialized();
     for (final boxName in HiveBoxes.allBoxes) {
@@ -127,7 +114,7 @@ class HiveManager {
       }
     }
 
-    debugPrint('HiveManager: all boxes cleared');
+    AppLogger.debug('all boxes cleared', name: 'hive');
   }
 
   /// Clear a specific box
@@ -143,7 +130,7 @@ class HiveManager {
     await Hive.close();
     _isInitialized = false;
 
-    debugPrint('HiveManager: all boxes closed');
+    AppLogger.debug('all boxes closed', name: 'hive');
   }
 
   /// Delete a box from disk completely

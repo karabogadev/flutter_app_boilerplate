@@ -24,11 +24,22 @@ class AppCachedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Decode at the displayed size instead of the source resolution; a 4K
+    // image shown as a thumbnail otherwise costs ~100x the memory. Only one
+    // dimension is passed so the aspect ratio is preserved.
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    int? toCacheSize(double? logical) => logical == null || !logical.isFinite
+        ? null
+        : (logical * pixelRatio).round();
+    final cacheWidth = toCacheSize(width);
+
     final image = CachedNetworkImage(
       imageUrl: imageUrl,
       width: width,
       height: height,
       fit: fit,
+      memCacheWidth: cacheWidth,
+      memCacheHeight: cacheWidth == null ? toCacheSize(height) : null,
       placeholder: (context, url) =>
           placeholder ?? _buildPlaceholder(context),
       errorWidget: (context, url, error) =>

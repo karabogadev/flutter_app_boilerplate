@@ -93,14 +93,15 @@ class AppButton extends StatelessWidget {
 
   Widget _buildChild(BuildContext context) {
     if (isLoading) {
+      final colorScheme = Theme.of(context).colorScheme;
       return SizedBox(
         height: 20,
         width: 20,
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
           color: type == AppButtonType.primary
-              ? Theme.of(context).colorScheme.onPrimary
-              : Theme.of(context).colorScheme.primary,
+              ? colorScheme.onPrimary
+              : colorScheme.primary,
         ),
       );
     }

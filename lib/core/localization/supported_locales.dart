@@ -59,4 +59,7 @@ enum SupportedLocale {
 
   /// Fallback locale
   static Locale get fallbackLocale => SupportedLocale.english.locale;
+
+  /// Folder with one `<languageCode>.json` per locale.
+  static const translationsPath = 'assets/translations';
 }

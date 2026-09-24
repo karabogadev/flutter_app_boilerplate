@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 
 import '../database/hive_manager.dart';
 import '../error/exceptions.dart';
+import '../logging/app_logger.dart';
 import '../network/dio_client.dart';
 import 'sync_operation.dart';
 import 'sync_status.dart';
@@ -40,7 +40,10 @@ class SyncQueue {
     }
 
     if (stuckOps.isNotEmpty) {
-      debugPrint('SyncQueue: recovered ${stuckOps.length} stuck in-progress ops');
+      AppLogger.debug(
+        'recovered ${stuckOps.length} stuck in-progress ops',
+        name: 'sync',
+      );
     }
   }
 
@@ -93,9 +96,7 @@ class SyncQueue {
     await _box.put(operation.id, operation);
     _notifyQueueChanged();
 
-    if (kDebugMode) {
-      print('SyncQueue: Added ${operation.id} (${operation.operationType})');
-    }
+    AppLogger.debug('Added ${operation.id} (${operation.operationType})', name: 'sync');
 
     return operation;
   }
@@ -111,7 +112,7 @@ class SyncQueue {
         .map((op) => op.id)
         .toList();
     await _box.deleteAll(keys);
-    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} completed ops');
+    AppLogger.debug('Cleared ${keys.length} completed ops', name: 'sync');
   }
 
   Future<void> clearFailed() async {
@@ -120,7 +121,7 @@ class SyncQueue {
         .map((op) => op.id)
         .toList();
     await _box.deleteAll(keys);
-    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} failed ops');
+    AppLogger.debug('Cleared ${keys.length} failed ops', name: 'sync');
   }
 
   Future<void> clearPending() async {
@@ -130,7 +131,7 @@ class SyncQueue {
         .toList();
     await _box.deleteAll(keys);
     _notifyQueueChanged();
-    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} pending ops');
+    AppLogger.debug('Cleared ${keys.length} pending ops', name: 'sync');
   }
 
   Future<void> clearStale() async {
@@ -139,7 +140,7 @@ class SyncQueue {
         .map((op) => op.id)
         .toList();
     await _box.deleteAll(keys);
-    if (kDebugMode) print('SyncQueue: Cleared ${keys.length} stale ops');
+    AppLogger.debug('Cleared ${keys.length} stale ops', name: 'sync');
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -164,9 +165,7 @@ class SyncQueue {
     try {
       final operations = pendingOperations;
 
-      if (kDebugMode) {
-        print('SyncQueue: Processing ${operations.length} operations');
-      }
+      AppLogger.debug('Processing ${operations.length} operations', name: 'sync');
 
       for (final operation in operations) {
         processed++;
