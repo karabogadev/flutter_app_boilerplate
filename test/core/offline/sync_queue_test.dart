@@ -6,7 +6,7 @@ import 'package:flutter_app_boilerplate/core/offline/sync_status.dart';
 
 // Pure logic tests for SyncQueue that don't require DI or Hive.
 // These test the backoff logic and data structures.
-// Full integration tests require resolving the DI singleton issue (Issue 1).
+// Queue processing itself is covered through OfflineManager/ConnectivityCubit.
 void main() {
   group('SyncOperation backoff logic', () {
     late Directory tempDir;
@@ -66,7 +66,7 @@ void main() {
       test('increments retryCount', () async {
         final op = makeOp();
         await box.add(op);
-        op.markFailed('Network error');
+        await op.markFailed('Network error');
         expect(op.retryCount, 1);
         expect(op.errorMessage, 'Network error');
       });
@@ -74,14 +74,14 @@ void main() {
       test('stays pending below maxRetries', () async {
         final op = makeOp();
         await box.add(op);
-        op.markFailed('Error');
+        await op.markFailed('Error');
         expect(op.status, SyncStatus.pending);
       });
 
       test('becomes failed at maxRetries', () async {
         final op = makeOp(retryCount: 2);
         await box.add(op);
-        op.markFailed('Error'); // retryCount becomes 3 = maxRetries
+        await op.markFailed('Error'); // retryCount becomes 3 = maxRetries
         expect(op.status, SyncStatus.failed);
       });
     });

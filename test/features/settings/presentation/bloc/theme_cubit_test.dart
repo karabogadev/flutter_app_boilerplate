@@ -1,82 +1,44 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:flutter_app_boilerplate/core/cache/cache_keys.dart';
+import 'package:flutter_app_boilerplate/core/cache/cache_manager.dart';
+import 'package:flutter_app_boilerplate/features/settings/data/repositories/settings_repository.dart';
 import 'package:flutter_app_boilerplate/features/settings/presentation/bloc/theme_cubit.dart';
-
-import '../../../../mocks/mocks.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  late MockCacheManager mockCacheManager;
+  late SettingsRepository repository;
 
-  setUp(() {
-    mockCacheManager = MockCacheManager();
+  Future<void> setUpRepository([Map<String, Object> values = const {}]) async {
+    SharedPreferences.setMockInitialValues(values);
+    repository = SettingsRepository(
+      CacheManager(await SharedPreferences.getInstance()),
+    );
+  }
+
+  setUp(setUpRepository);
+
+  test('starts with the stored mode without emitting', () async {
+    await setUpRepository({CacheKeys.themeMode.key: 'dark'});
+    final cubit = ThemeCubit(repository);
+
+    expect(cubit.state, ThemeMode.dark);
+    await cubit.close();
   });
 
-  setUpAll(registerFallbackValues);
+  blocTest<ThemeCubit, ThemeMode>(
+    'setThemeMode emits and persists the mode',
+    build: () => ThemeCubit(repository),
+    act: (cubit) => cubit.setThemeMode(ThemeMode.dark),
+    expect: () => [ThemeMode.dark],
+    verify: (_) => expect(repository.themeMode, ThemeMode.dark),
+  );
 
-  group('ThemeCubit', () {
-    test('initial state is ThemeMode.system when no saved preference', () {
-      when(() => mockCacheManager.getString(CacheKeys.themeMode))
-          .thenReturn(null);
-
-      final cubit = ThemeCubit(mockCacheManager);
-
-      expect(cubit.state.themeMode, ThemeMode.system);
-      cubit.close();
-    });
-
-    test('loads saved theme on construction', () {
-      when(() => mockCacheManager.getString(CacheKeys.themeMode))
-          .thenReturn('dark');
-
-      // _loadTheme has no awaits, so emit() fires synchronously during
-      // construction. Check state directly instead of listening to the stream.
-      final cubit = ThemeCubit(mockCacheManager);
-
-      expect(cubit.state.themeMode, ThemeMode.dark);
-      expect(cubit.state.isDark, true);
-      cubit.close();
-    });
-
-    blocTest<ThemeCubit, ThemeState>(
-      'setTheme() emits new theme and saves to cache',
-      build: () {
-        when(() => mockCacheManager.getString(CacheKeys.themeMode))
-            .thenReturn(null);
-        when(() => mockCacheManager.setString(CacheKeys.themeMode, any()))
-            .thenAnswer((_) async {});
-        return ThemeCubit(mockCacheManager);
-      },
-      act: (cubit) => cubit.setTheme(ThemeMode.dark),
-      expect: () => [
-        isA<ThemeState>()
-            .having((s) => s.themeMode, 'themeMode', ThemeMode.dark)
-            .having((s) => s.isDark, 'isDark', true),
-      ],
-      verify: (_) {
-        verify(() => mockCacheManager.setString(CacheKeys.themeMode, 'dark'))
-            .called(1);
-      },
-    );
-
-    blocTest<ThemeCubit, ThemeState>(
-      'toggleTheme() switches dark → light',
-      build: () {
-        when(() => mockCacheManager.getString(CacheKeys.themeMode))
-            .thenReturn('dark');
-        when(() => mockCacheManager.setString(CacheKeys.themeMode, any()))
-            .thenAnswer((_) async {});
-        return ThemeCubit(mockCacheManager);
-      },
-      seed: () => const ThemeState(themeMode: ThemeMode.dark, isDark: true),
-      act: (cubit) => cubit.toggleTheme(),
-      expect: () => [
-        isA<ThemeState>()
-            .having((s) => s.themeMode, 'themeMode', ThemeMode.light)
-            .having((s) => s.isDark, 'isDark', false),
-      ],
-    );
-  });
+  blocTest<ThemeCubit, ThemeMode>(
+    'setting the current mode again emits nothing',
+    build: () => ThemeCubit(repository),
+    act: (cubit) => cubit.setThemeMode(ThemeMode.system),
+    expect: () => <ThemeMode>[],
+  );
 }
