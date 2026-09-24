@@ -34,8 +34,9 @@ void main() {
     await prefs.setBool(CacheKeys.onboardingCompleted.key, true);
 
     final offlineManager = MockOfflineManager();
-    when(() => offlineManager.onStatusChanged)
-        .thenAnswer((_) => const Stream.empty());
+    when(
+      () => offlineManager.onStatusChanged,
+    ).thenAnswer((_) => const Stream.empty());
     when(() => offlineManager.currentStatus).thenReturn(
       const OfflineStatus(
         connectivity: ConnectivityStatus.online,
@@ -62,16 +63,13 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
 
     final scrollable = find.byType(Scrollable).first;
-    await binding.traceAction(
-      () async {
-        for (var i = 0; i < 3; i++) {
-          await tester.fling(scrollable, const Offset(0, -600), 3000);
-          await tester.pumpAndSettle();
-          await tester.fling(scrollable, const Offset(0, 600), 3000);
-          await tester.pumpAndSettle();
-        }
-      },
-      reportKey: 'home_scroll_timeline',
-    );
+    await binding.traceAction(() async {
+      for (var i = 0; i < 3; i++) {
+        await tester.fling(scrollable, const Offset(0, -600), 3000);
+        await tester.pumpAndSettle();
+        await tester.fling(scrollable, const Offset(0, 600), 3000);
+        await tester.pumpAndSettle();
+      }
+    }, reportKey: 'home_scroll_timeline');
   });
 }
