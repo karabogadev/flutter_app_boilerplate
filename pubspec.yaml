@@ -4,14 +4,14 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ^3.9.0
+  flutter: '>=3.35.0'
 
 dependencies:
   auto_route: ^11.1.0
   bloc: ^9.1.0
   cached_network_image: ^3.4.1
   connectivity_plus: ^6.1.1
-  dartz: ^0.10.1
   dio: ^5.9.0
   easy_localization: ^3.0.8
   equatable: ^2.0.7
@@ -19,10 +19,8 @@ dependencies:
     sdk: flutter
   flutter_bloc: ^9.1.1
   flutter_secure_storage: ^10.0.0
-  flutter_svg: ^2.2.3
   freezed_annotation: ^3.1.0
   get_it: ^9.2.0
-  google_fonts: ^6.3.3
   hive_ce: ^2.10.1
   hive_ce_flutter: ^2.2.0
   json_annotation: ^4.9.0
@@ -39,6 +37,8 @@ dev_dependencies:
     sdk: flutter
   freezed: ^3.2.3
   hive_ce_generator: ^1.8.0
+  integration_test:
+    sdk: flutter
   json_serializable: ^6.9.4
   mocktail: ^1.0.4
 
@@ -48,3 +48,17 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/translations/
+    - assets/fonts/inter/OFL.txt
+  # Bundled instead of fetched at runtime (no network dependency, no FOUT).
+  # Subset to Latin + Latin Extended, which covers English and Turkish.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/inter/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/inter/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/inter/Inter-Bold.ttf
+          weight: 700
