@@ -109,12 +109,28 @@ void main() {
       verify: (_) => expect(repository.isAuthenticated, isFalse),
     );
 
+    // Regression: with a real session, the repository's session change and a
+    // cleanup failure used to race and emit AuthError after Unauthenticated.
     blocTest<AuthBloc, AuthState>(
-      'emits AuthError when local cleanup fails',
-      setUp: () => repository.logoutFailure = const CacheFailure(),
+      'still signs out, without an error, when local cleanup fails',
+      setUp: () {
+        repository = FakeAuthRepository(persistedUser: user)
+          ..logoutFailure = const CacheFailure();
+      },
       build: buildBloc,
-      act: (bloc) => bloc.add(const LogoutEvent()),
-      expect: () => [const AuthLoading(), const AuthError('Cache error')],
+      act: (bloc) async {
+        bloc.add(const CheckAuthStatusEvent());
+        await Future<void>.delayed(Duration.zero);
+        bloc.add(const LogoutEvent());
+        // Let the session-change event and the logout result both land.
+        await Future<void>.delayed(Duration.zero);
+      },
+      skip: 2,
+      expect: () => [const AuthLoading(), const Unauthenticated()],
+      verify: (bloc) {
+        expect(bloc.state, const Unauthenticated());
+        expect(repository.isAuthenticated, isFalse);
+      },
     );
   });
 

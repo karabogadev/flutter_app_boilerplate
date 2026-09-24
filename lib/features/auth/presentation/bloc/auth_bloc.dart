@@ -66,14 +66,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
+  /// Always ends in [Unauthenticated]: the repository ends the in-memory
+  /// session even when clearing storage fails (that failure is logged by
+  /// `Result.guard`). Emitting an [AuthError] here would race with the
+  /// [_SessionChanged] event and surface as a stray error on the Login page.
   Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
-    switch (await _authRepository.logout()) {
-      case Ok():
-        emit(const Unauthenticated());
-      case Err(:final failure):
-        emit(AuthError(failure.message));
-    }
+    await _authRepository.logout();
+    emit(const Unauthenticated());
   }
 
   void _onSessionChanged(_SessionChanged event, Emitter<AuthState> emit) {
