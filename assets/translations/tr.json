@@ -14,7 +14,9 @@
     "retry": "Tekrar Dene",
     "error": "Hata",
     "success": "Başarılı",
-    "warning": "Uyarı"
+    "warning": "Uyarı",
+    "show_password": "Şifreyi göster",
+    "hide_password": "Şifreyi gizle"
   },
   "auth": {
     "login": "Giriş Yap",

@@ -55,7 +55,9 @@ void main() {
       late Box<SyncOperation> box;
 
       setUp(() async {
-        box = await Hive.openBox<SyncOperation>('test_markfailed_${DateTime.now().millisecondsSinceEpoch}');
+        box = await Hive.openBox<SyncOperation>(
+          'test_markfailed_${DateTime.now().millisecondsSinceEpoch}',
+        );
       });
 
       tearDown(() async {

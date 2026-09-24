@@ -13,9 +13,12 @@ void main() {
       final cases = <Exception, Failure>{
         const ServerException(message: 'boom', statusCode: 500):
             const ServerFailure(message: 'boom', statusCode: 500),
-        const NetworkException(message: 'offline'):
-            const NetworkFailure(message: 'offline'),
-        const CacheException(message: 'disk'): const CacheFailure(message: 'disk'),
+        const NetworkException(message: 'offline'): const NetworkFailure(
+          message: 'offline',
+        ),
+        const CacheException(message: 'disk'): const CacheFailure(
+          message: 'disk',
+        ),
         const ParseException(): const UnexpectedFailure(),
         Exception('anything else'): const UnexpectedFailure(),
       };
@@ -39,11 +42,14 @@ void main() {
 
   test('switch over Result is exhaustive', () {
     String describe(Result<int> result) => switch (result) {
-          Ok(:final value) => 'ok $value',
-          Err(:final failure) => 'err ${failure.message}',
-        };
+      Ok(:final value) => 'ok $value',
+      Err(:final failure) => 'err ${failure.message}',
+    };
 
     expect(describe(const Result.ok(1)), 'ok 1');
-    expect(describe(const Result.error(NetworkFailure())), 'err No internet connection');
+    expect(
+      describe(const Result.error(NetworkFailure())),
+      'err No internet connection',
+    );
   });
 }

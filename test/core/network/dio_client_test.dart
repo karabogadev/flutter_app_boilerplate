@@ -74,22 +74,27 @@ void main() {
     expect(client.get<dynamic>('/users'), throwsA(isA<NetworkException>()));
   });
 
-  test('setAuthToken and clearAuthToken control the Authorization header',
-      () async {
-    late _Adapter adapter;
-    final client = DioClient(
-      dio: Dio()
-        ..httpClientAdapter = adapter = _Adapter(
-          (_) async => ResponseBody.fromString('{}', 200),
-        ),
-    );
+  test(
+    'setAuthToken and clearAuthToken control the Authorization header',
+    () async {
+      late _Adapter adapter;
+      final client = DioClient(
+        dio: Dio()
+          ..httpClientAdapter = adapter = _Adapter(
+            (_) async => ResponseBody.fromString('{}', 200),
+          ),
+      );
 
-    client.setAuthToken('abc');
-    await client.get<dynamic>('/me');
-    expect(adapter.lastRequest?.headers[ApiConstants.authorization], 'Bearer abc');
+      client.setAuthToken('abc');
+      await client.get<dynamic>('/me');
+      expect(
+        adapter.lastRequest?.headers[ApiConstants.authorization],
+        'Bearer abc',
+      );
 
-    client.clearAuthToken();
-    await client.get<dynamic>('/me');
-    expect(adapter.lastRequest?.headers[ApiConstants.authorization], isNull);
-  });
+      client.clearAuthToken();
+      await client.get<dynamic>('/me');
+      expect(adapter.lastRequest?.headers[ApiConstants.authorization], isNull);
+    },
+  );
 }

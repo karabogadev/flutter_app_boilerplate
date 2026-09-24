@@ -52,8 +52,9 @@ void main() {
 
     blocTest<AuthBloc, AuthState>(
       'emits [AuthLoading, AuthError] with the failure message',
-      setUp: () => repository.signInFailure =
-          const ServerFailure(message: 'Invalid credentials'),
+      setUp: () => repository.signInFailure = const ServerFailure(
+        message: 'Invalid credentials',
+      ),
       build: buildBloc,
       act: (bloc) => bloc.add(
         const LoginEvent(email: 'test@example.com', password: 'wrong'),

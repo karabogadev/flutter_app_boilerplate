@@ -89,8 +89,9 @@ void main() {
     });
 
     test('returns CacheFailure when secure storage fails', () async {
-      when(() => local.getAccessToken())
-          .thenThrow(const CacheException(message: 'keychain locked'));
+      when(
+        () => local.getAccessToken(),
+      ).thenThrow(const CacheException(message: 'keychain locked'));
 
       final result = await repository.restoreSession();
 
@@ -203,8 +204,9 @@ void main() {
     });
 
     test('ends the in-memory session even if storage cleanup fails', () async {
-      when(() => local.clearAll())
-          .thenThrow(const CacheException(message: 'disk full'));
+      when(
+        () => local.clearAll(),
+      ).thenThrow(const CacheException(message: 'disk full'));
 
       final result = await repository.logout();
 

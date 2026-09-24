@@ -19,6 +19,8 @@ abstract class LocaleKeys {
   static const String commonError = 'common.error';
   static const String commonSuccess = 'common.success';
   static const String commonWarning = 'common.warning';
+  static const String commonShowPassword = 'common.show_password';
+  static const String commonHidePassword = 'common.hide_password';
 
   // Auth
   static const String authLogin = 'auth.login';

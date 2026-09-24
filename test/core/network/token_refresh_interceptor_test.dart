@@ -28,12 +28,12 @@ class _FakeAdapter implements HttpClientAdapter {
 }
 
 ResponseBody _json(Object body, int statusCode) => ResponseBody.fromString(
-      jsonEncode(body),
-      statusCode,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+  jsonEncode(body),
+  statusCode,
+  headers: {
+    Headers.contentTypeHeader: [Headers.jsonContentType],
+  },
+);
 
 const _oldHeader = 'Bearer old';
 const _newHeader = 'Bearer new';
@@ -50,19 +50,23 @@ void main() {
   /// The API accepts only the new token.
   Future<ResponseBody> api(RequestOptions options) async =>
       options.headers[ApiConstants.authorization] == _newHeader
-          ? _json({'ok': true}, 200)
-          : _json({'message': 'unauthorized'}, 401);
+      ? _json({'ok': true}, 200)
+      : _json({'message': 'unauthorized'}, 401);
 
-  void install({required Future<ResponseBody> Function(RequestOptions) refresh}) {
+  void install({
+    required Future<ResponseBody> Function(RequestOptions) refresh,
+  }) {
     dio = Dio()..httpClientAdapter = apiAdapter = _FakeAdapter(api);
-    refreshDio = Dio()..httpClientAdapter = refreshAdapter = _FakeAdapter(refresh);
+    refreshDio = Dio()
+      ..httpClientAdapter = refreshAdapter = _FakeAdapter(refresh);
     dio.options.headers[ApiConstants.authorization] = _oldHeader;
     dio.interceptors.add(
       TokenRefreshInterceptor(
         dio: dio,
         refreshDio: refreshDio,
         getRefreshToken: () async => storedRefreshToken,
-        saveTokens: (access, refresh) async => savedTokens.add((access, refresh)),
+        saveTokens: (access, refresh) async =>
+            savedTokens.add((access, refresh)),
         onSessionExpired: () async => expiredCount++,
       ),
     );
@@ -104,43 +108,53 @@ void main() {
     await expectLater(
       dio.post<dynamic>('/auth/login'),
       throwsA(
-        isA<DioException>().having((e) => e.response?.statusCode, 'status', 401),
+        isA<DioException>().having(
+          (e) => e.response?.statusCode,
+          'status',
+          401,
+        ),
       ),
     );
     expect(refreshAdapter.requests, isEmpty);
     expect(expiredCount, 0);
   });
 
-  test('a stale token is retried with the current one without refreshing',
-      () async {
-    install(refresh: successfulRefresh);
-    dio.options.headers[ApiConstants.authorization] = _newHeader;
+  test(
+    'a stale token is retried with the current one without refreshing',
+    () async {
+      install(refresh: successfulRefresh);
+      dio.options.headers[ApiConstants.authorization] = _newHeader;
 
-    final response = await dio.get<dynamic>(
-      '/a',
-      options: Options(headers: {ApiConstants.authorization: _oldHeader}),
-    );
+      final response = await dio.get<dynamic>(
+        '/a',
+        options: Options(headers: {ApiConstants.authorization: _oldHeader}),
+      );
 
-    expect(response.statusCode, 200);
-    expect(refreshAdapter.requests, isEmpty);
-  });
+      expect(response.statusCode, 200);
+      expect(refreshAdapter.requests, isEmpty);
+    },
+  );
 
-  test('expires the session when the server rejects the refresh token',
-      () async {
-    install(refresh: (_) async => _json({'message': 'invalid'}, 401));
+  test(
+    'expires the session when the server rejects the refresh token',
+    () async {
+      install(refresh: (_) async => _json({'message': 'invalid'}, 401));
 
-    await expectLater(dio.get<dynamic>('/a'), throwsA(isA<DioException>()));
-    expect(expiredCount, 1);
-    expect(savedTokens, isEmpty);
-  });
+      await expectLater(dio.get<dynamic>('/a'), throwsA(isA<DioException>()));
+      expect(expiredCount, 1);
+      expect(savedTokens, isEmpty);
+    },
+  );
 
-  test('keeps the session when the refresh fails for network reasons',
-      () async {
-    install(refresh: (_) => throw Exception('offline'));
+  test(
+    'keeps the session when the refresh fails for network reasons',
+    () async {
+      install(refresh: (_) => throw Exception('offline'));
 
-    await expectLater(dio.get<dynamic>('/a'), throwsA(isA<DioException>()));
-    expect(expiredCount, 0);
-  });
+      await expectLater(dio.get<dynamic>('/a'), throwsA(isA<DioException>()));
+      expect(expiredCount, 0);
+    },
+  );
 
   test('expires the session when no refresh token is stored', () async {
     storedRefreshToken = null;

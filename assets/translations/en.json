@@ -14,7 +14,9 @@
     "retry": "Retry",
     "error": "Error",
     "success": "Success",
-    "warning": "Warning"
+    "warning": "Warning",
+    "show_password": "Show password",
+    "hide_password": "Hide password"
   },
   "auth": {
     "login": "Login",

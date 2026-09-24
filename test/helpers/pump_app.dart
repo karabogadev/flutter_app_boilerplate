@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_boilerplate/core/localization/supported_locales.dart';
@@ -14,12 +17,27 @@ Future<void> setUpLocalization() async {
   await EasyLocalization.ensureInitialized();
 }
 
+/// Reads the real translation files synchronously from disk.
+///
+/// The default loader goes through `rootBundle`, whose cached futures belong
+/// to the first test's fake-async zone; later tests in the same file would
+/// then never finish loading and render nothing.
+class _FileAssetLoader extends AssetLoader {
+  const _FileAssetLoader();
+
+  @override
+  Future<Map<String, dynamic>> load(String path, Locale locale) async =>
+      jsonDecode(File('$path/${locale.languageCode}.json').readAsStringSync())
+          as Map<String, dynamic>;
+}
+
 /// Wraps [child] in [EasyLocalization] with the real translation files and
 /// the given [locale]. Use it around anything that calls `.tr()`.
 Widget localized(Widget child, {Locale locale = const Locale('en')}) {
   return EasyLocalization(
     supportedLocales: SupportedLocale.locales,
     path: SupportedLocale.translationsPath,
+    assetLoader: const _FileAssetLoader(),
     fallbackLocale: SupportedLocale.fallbackLocale,
     startLocale: locale,
     saveLocale: false,

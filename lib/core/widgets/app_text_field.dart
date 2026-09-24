@@ -1,5 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../localization/locale_keys.dart';
 
 class AppTextField extends StatefulWidget {
   final TextEditingController? controller;
@@ -131,6 +134,9 @@ class _AppTextFieldState extends State<AppTextField> {
         prefixIcon: widget.prefixIcon,
         suffixIcon: widget.obscureText
             ? IconButton(
+                tooltip: _obscureText
+                    ? LocaleKeys.commonShowPassword.tr()
+                    : LocaleKeys.commonHidePassword.tr(),
                 icon: Icon(
                   _obscureText ? Icons.visibility_off : Icons.visibility,
                 ),

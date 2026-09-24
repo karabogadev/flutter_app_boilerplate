@@ -47,16 +47,14 @@ class FakeAuthRepository implements AuthRepository {
   Future<Result<User>> login({
     required String email,
     required String password,
-  }) async =>
-      _signIn();
+  }) async => _signIn();
 
   @override
   Future<Result<User>> register({
     required String email,
     required String password,
     String? name,
-  }) async =>
-      _signIn();
+  }) async => _signIn();
 
   @override
   Future<Result<void>> logout() async {

@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  Future<SettingsRepository> build([Map<String, Object> values = const {}]) async {
+  Future<SettingsRepository> build([
+    Map<String, Object> values = const {},
+  ]) async {
     SharedPreferences.setMockInitialValues(values);
     return SettingsRepository(
       CacheManager(await SharedPreferences.getInstance()),

@@ -13,6 +13,9 @@ class ThemeCubit extends Cubit<ThemeMode> {
   final SettingsRepository _settingsRepository;
 
   Future<void> setThemeMode(ThemeMode mode) async {
+    // Cubit re-emits an equal state if nothing was emitted yet; skip it to
+    // avoid a needless MaterialApp rebuild and disk write.
+    if (mode == state) return;
     emit(mode);
     await _settingsRepository.setThemeMode(mode);
   }
