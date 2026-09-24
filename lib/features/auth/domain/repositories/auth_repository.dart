@@ -3,7 +3,7 @@ import '../entities/user.dart';
 
 /// Single source of truth for the auth session.
 ///
-/// The router guard, [AuthBloc] and the token-refresh interceptor all read or
+/// The router guard, `AuthBloc` and the token-refresh interceptor all read or
 /// change the session through this repository only; nothing else touches
 /// tokens or the cached user.
 abstract interface class AuthRepository {

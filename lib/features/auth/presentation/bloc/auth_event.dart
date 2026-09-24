@@ -1,44 +1,52 @@
-import 'package:equatable/equatable.dart';
+part of 'auth_bloc.dart';
 
-abstract class AuthEvent extends Equatable {
+sealed class AuthEvent extends Equatable {
   const AuthEvent();
 
   @override
   List<Object?> get props => [];
 }
 
-class CheckAuthStatusEvent extends AuthEvent {
+/// Restores a persisted session. Dispatched once, from the splash screen.
+final class CheckAuthStatusEvent extends AuthEvent {
   const CheckAuthStatusEvent();
 }
 
-class LoginEvent extends AuthEvent {
+final class LoginEvent extends AuthEvent {
+  const LoginEvent({required this.email, required this.password});
+
   final String email;
   final String password;
-
-  const LoginEvent({
-    required this.email,
-    required this.password,
-  });
 
   @override
   List<Object?> get props => [email, password];
 }
 
-class RegisterEvent extends AuthEvent {
-  final String email;
-  final String password;
-  final String? name;
-
+final class RegisterEvent extends AuthEvent {
   const RegisterEvent({
     required this.email,
     required this.password,
     this.name,
   });
 
+  final String email;
+  final String password;
+  final String? name;
+
   @override
   List<Object?> get props => [email, password, name];
 }
 
-class LogoutEvent extends AuthEvent {
+final class LogoutEvent extends AuthEvent {
   const LogoutEvent();
+}
+
+/// Internal: the repository's session changed outside of a user action.
+final class _SessionChanged extends AuthEvent {
+  const _SessionChanged(this.user);
+
+  final User? user;
+
+  @override
+  List<Object?> get props => [user];
 }

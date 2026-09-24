@@ -1,65 +1,59 @@
+import 'dart:async';
+
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/usecases/usecase.dart';
-import '../../domain/usecases/get_current_user.dart';
-import '../../domain/usecases/login_user.dart';
-import '../../domain/usecases/logout_user.dart';
-import '../../domain/usecases/register_user.dart';
-import 'auth_event.dart';
-import 'auth_state.dart';
+import '../../../../core/result/result.dart';
+import '../../domain/entities/user.dart';
+import '../../domain/repositories/auth_repository.dart';
 
+part 'auth_event.dart';
+part 'auth_state.dart';
+
+/// Presentation-side mirror of [AuthRepository]'s session.
+///
+/// Besides handling user actions, it follows
+/// [AuthRepository.sessionChanges], so a session that ends elsewhere (e.g. a
+/// rejected refresh token) is reflected in the UI too.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final LoginUser loginUser;
-  final RegisterUser registerUser;
-  final LogoutUser logoutUser;
-  final GetCurrentUser getCurrentUser;
-
-  AuthBloc({
-    required this.loginUser,
-    required this.registerUser,
-    required this.logoutUser,
-    required this.getCurrentUser,
-  }) : super(const AuthInitial()) {
+  AuthBloc({required AuthRepository authRepository})
+      : _authRepository = authRepository,
+        super(const AuthInitial()) {
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
     on<LoginEvent>(_onLogin);
     on<RegisterEvent>(_onRegister);
     on<LogoutEvent>(_onLogout);
+    on<_SessionChanged>(_onSessionChanged);
+
+    _sessionSubscription = authRepository.sessionChanges.listen(
+      (user) => add(_SessionChanged(user)),
+    );
   }
+
+  final AuthRepository _authRepository;
+  late final StreamSubscription<User?> _sessionSubscription;
 
   Future<void> _onCheckAuthStatus(
     CheckAuthStatusEvent event,
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-
-    final result = await getCurrentUser(const NoParams());
-
-    result.fold(
-      (failure) => emit(const Unauthenticated()),
-      (user) {
-        if (user != null) {
-          emit(Authenticated(user));
-        } else {
-          emit(const Unauthenticated());
-        }
-      },
-    );
+    switch (await _authRepository.restoreSession()) {
+      case Ok(value: final User user):
+        emit(Authenticated(user));
+      case Ok() || Err():
+        emit(const Unauthenticated());
+    }
   }
 
-  Future<void> _onLogin(
-    LoginEvent event,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _onLogin(LoginEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
-
-    final result = await loginUser(LoginParams(
-      email: event.email,
-      password: event.password,
-    ));
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(Authenticated(user)),
+    _emitSignInResult(
+      await _authRepository.login(
+        email: event.email,
+        password: event.password,
+      ),
+      emit,
     );
   }
 
@@ -68,30 +62,45 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-
-    final result = await registerUser(RegisterParams(
-      email: event.email,
-      password: event.password,
-      name: event.name,
-    ));
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(Authenticated(user)),
+    _emitSignInResult(
+      await _authRepository.register(
+        email: event.email,
+        password: event.password,
+        name: event.name,
+      ),
+      emit,
     );
   }
 
-  Future<void> _onLogout(
-    LogoutEvent event,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
+    switch (await _authRepository.logout()) {
+      case Ok():
+        emit(const Unauthenticated());
+      case Err(:final failure):
+        emit(AuthError(failure.message));
+    }
+  }
 
-    final result = await logoutUser(const NoParams());
+  void _onSessionChanged(_SessionChanged event, Emitter<AuthState> emit) {
+    emit(switch (event.user) {
+      final User user => Authenticated(user),
+      null => const Unauthenticated(),
+    });
+  }
 
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(const Unauthenticated()),
-    );
+  void _emitSignInResult(Result<User> result, Emitter<AuthState> emit) {
+    switch (result) {
+      case Ok(:final value):
+        emit(Authenticated(value));
+      case Err(:final failure):
+        emit(AuthError(failure.message));
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    await _sessionSubscription.cancel();
+    return super.close();
   }
 }

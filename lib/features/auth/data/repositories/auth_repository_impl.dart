@@ -1,9 +1,8 @@
-import 'package:dartz/dartz.dart';
+import 'dart:async';
 
-import '../../../../core/error/exceptions.dart';
-import '../../../../core/error/failures.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/offline/sync_queue.dart';
+import '../../../../core/result/result.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -11,115 +10,114 @@ import '../datasources/auth_remote_datasource.dart';
 import '../models/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  final AuthRemoteDataSource remoteDataSource;
-  final AuthLocalDataSource localDataSource;
-  final DioClient dioClient;
-  final SyncQueue syncQueue;
-
   AuthRepositoryImpl({
-    required this.remoteDataSource,
-    required this.localDataSource,
-    required this.dioClient,
-    required this.syncQueue,
-  });
+    required AuthRemoteDataSource remoteDataSource,
+    required AuthLocalDataSource localDataSource,
+    required DioClient dioClient,
+    required SyncQueue syncQueue,
+  })  : _remote = remoteDataSource,
+        _local = localDataSource,
+        _dioClient = dioClient,
+        _syncQueue = syncQueue;
+
+  final AuthRemoteDataSource _remote;
+  final AuthLocalDataSource _local;
+  final DioClient _dioClient;
+  final SyncQueue _syncQueue;
+
+  final _sessionController = StreamController<User?>.broadcast();
+  User? _currentUser;
 
   @override
-  Future<Either<Failure, User>> login({
+  User? get currentUser => _currentUser;
+
+  @override
+  bool get isAuthenticated => _currentUser != null;
+
+  @override
+  Stream<User?> get sessionChanges => _sessionController.stream;
+
+  @override
+  Future<Result<User?>> restoreSession() => Result.guard(() async {
+        final token = await _local.getAccessToken();
+        final user = token == null ? null : _local.getUser()?.toEntity();
+
+        if (token == null || user == null) {
+          // A token without a profile (or vice versa) is not a usable
+          // session; wipe the leftovers so every check agrees.
+          if (token != null || _local.getUser() != null) {
+            await _local.clearAll();
+          }
+          _setUser(null);
+          return null;
+        }
+
+        _dioClient.setAuthToken(token);
+        _setUser(user);
+        return user;
+      });
+
+  @override
+  Future<Result<User>> login({
     required String email,
     required String password,
-  }) async {
-    try {
-      final result = await remoteDataSource.login(
-        email: email,
-        password: password,
-      );
-      return Right(await _persistAuthResult(result));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(message: e.message));
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
-  }
+  }) =>
+      Result.guard(() async {
+        final response = await _remote.login(email: email, password: password);
+        return _startSession(response);
+      });
 
   @override
-  Future<Either<Failure, User>> register({
+  Future<Result<User>> register({
     required String email,
     required String password,
     String? name,
-  }) async {
-    try {
-      final result = await remoteDataSource.register(
-        email: email,
-        password: password,
-        name: name,
-      );
-      return Right(await _persistAuthResult(result));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(message: e.message));
-    } catch (e) {
-      return Left(ServerFailure(message: e.toString()));
-    }
+  }) =>
+      Result.guard(() async {
+        final response = await _remote.register(
+          email: email,
+          password: password,
+          name: name,
+        );
+        return _startSession(response);
+      });
+
+  @override
+  Future<Result<void>> logout() async {
+    await _remote.logout();
+    return Result.guard(_endSession);
   }
 
   @override
-  Future<Either<Failure, User?>> getCurrentUser() async {
-    try {
-      final user = await localDataSource.getUser();
-      if (user != null) {
-        final token = await localDataSource.getAccessToken();
-        if (token != null) {
-          dioClient.setAuthToken(token);
-        }
-      }
-      return Right(user?.toEntity());
-    } on CacheException catch (e) {
-      return Left(CacheFailure(message: e.message));
-    } catch (e) {
-      return Left(CacheFailure(message: e.toString()));
-    }
-  }
+  Future<void> expireSession() => Result.guard(_endSession);
 
-  @override
-  Future<Either<Failure, Unit>> logout() async {
-    // Remote logout is best-effort — a server error doesn't block local cleanup.
-    try {
-      await remoteDataSource.logout();
-    } catch (_) {}
-
-    // Local cleanup must succeed — if it fails the user is in a broken state.
-    try {
-      await localDataSource.clearAll();
-      await syncQueue.clearPending();
-      dioClient.clearAuthToken();
-      return const Right(unit);
-    } on CacheException catch (e) {
-      return Left(CacheFailure(message: e.message));
-    } catch (e) {
-      return Left(CacheFailure(message: e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, bool>> isLoggedIn() async {
-    try {
-      final token = await localDataSource.getAccessToken();
-      return Right(token != null);
-    } catch (_) {
-      return const Right(false);
-    }
-  }
-
-  Future<User> _persistAuthResult(AuthResponse result) async {
-    await localDataSource.saveTokens(
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+  Future<User> _startSession(AuthResponse response) async {
+    await _local.saveTokens(
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
     );
-    dioClient.setAuthToken(result.accessToken);
-    await localDataSource.saveUser(result.user);
-    return result.user.toEntity();
+    await _local.saveUser(response.user);
+    _dioClient.setAuthToken(response.accessToken);
+
+    final user = response.user.toEntity();
+    _setUser(user);
+    return user;
   }
+
+  /// Ends the in-memory session first, so even if clearing storage fails the
+  /// app never keeps acting as the previous user. Pending sync operations are
+  /// dropped so they are not sent with another user's token.
+  Future<void> _endSession() async {
+    _dioClient.clearAuthToken();
+    _setUser(null);
+    await Future.wait([_local.clearAll(), _syncQueue.clearPending()]);
+  }
+
+  void _setUser(User? user) {
+    if (user == _currentUser) return;
+    _currentUser = user;
+    _sessionController.add(user);
+  }
+
+  Future<void> dispose() => _sessionController.close();
 }
