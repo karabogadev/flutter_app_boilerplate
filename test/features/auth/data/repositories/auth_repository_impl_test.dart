@@ -1,231 +1,240 @@
-import 'package:dartz/dartz.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:flutter_app_boilerplate/core/error/exceptions.dart';
 import 'package:flutter_app_boilerplate/core/error/failures.dart';
+import 'package:flutter_app_boilerplate/core/result/result.dart';
 import 'package:flutter_app_boilerplate/features/auth/data/models/user_model.dart';
 import 'package:flutter_app_boilerplate/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:flutter_app_boilerplate/features/auth/domain/entities/user.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
-import '../../../../mocks/mocks.dart';
 import '../../../../helpers/test_helpers.dart';
+import '../../../../mocks/mocks.dart';
 
 void main() {
+  late MockAuthRemoteDataSource remote;
+  late MockAuthLocalDataSource local;
+  late MockDioClient dioClient;
+  late MockSyncQueue syncQueue;
   late AuthRepositoryImpl repository;
-  late MockAuthRemoteDataSource mockRemote;
-  late MockAuthLocalDataSource mockLocal;
-  late MockDioClient mockDioClient;
-  late MockSyncQueue mockSyncQueue;
 
-  setUp(() {
-    mockRemote = MockAuthRemoteDataSource();
-    mockLocal = MockAuthLocalDataSource();
-    mockDioClient = MockDioClient();
-    mockSyncQueue = MockSyncQueue();
-
-    repository = AuthRepositoryImpl(
-      remoteDataSource: mockRemote,
-      localDataSource: mockLocal,
-      dioClient: mockDioClient,
-      syncQueue: mockSyncQueue,
-    );
-  });
+  final user = TestData.testUser;
+  final userModel = UserModel.fromEntity(user);
+  final authResponse = AuthResponse(
+    user: userModel,
+    accessToken: 'access',
+    refreshToken: 'refresh',
+  );
 
   setUpAll(registerFallbackValues);
 
-  final tUser = TestData.testUser;
-  final tUserModel = UserModel(
-    id: tUser.id,
-    email: tUser.email,
-    name: tUser.name,
-    avatarUrl: tUser.avatarUrl,
-    createdAt: tUser.createdAt,
-  );
-  final tAuthResponse = AuthResponse(
-    user: tUserModel,
-    accessToken: 'access-token',
-    refreshToken: 'refresh-token',
-  );
+  setUp(() {
+    remote = MockAuthRemoteDataSource();
+    local = MockAuthLocalDataSource();
+    dioClient = MockDioClient();
+    syncQueue = MockSyncQueue();
+    repository = AuthRepositoryImpl(
+      remoteDataSource: remote,
+      localDataSource: local,
+      dioClient: dioClient,
+      syncQueue: syncQueue,
+    );
 
-  // ─────────────────────────────────────────────────────────────
-  // login()
-  // ─────────────────────────────────────────────────────────────
+    when(
+      () => local.saveTokens(
+        accessToken: any(named: 'accessToken'),
+        refreshToken: any(named: 'refreshToken'),
+      ),
+    ).thenAnswer((_) async {});
+    when(() => local.saveUser(any())).thenAnswer((_) async {});
+    when(() => local.clearAll()).thenAnswer((_) async {});
+    when(() => syncQueue.clearPending()).thenAnswer((_) async {});
+    when(() => remote.logout()).thenAnswer((_) async {});
+  });
 
-  group('login()', () {
-    test('returns Right(User), saves tokens and sets DioClient header', () async {
-      when(() => mockRemote.login(email: any(named: 'email'), password: any(named: 'password')))
-          .thenAnswer((_) async => tAuthResponse);
-      when(() => mockLocal.saveTokens(
-            accessToken: any(named: 'accessToken'),
-            refreshToken: any(named: 'refreshToken'),
-          )).thenAnswer((_) async {});
-      when(() => mockDioClient.setAuthToken(any())).thenReturn(null);
-      when(() => mockLocal.saveUser(any())).thenAnswer((_) async {});
+  tearDown(() => repository.dispose());
 
-      final result = await repository.login(
-        email: 'test@example.com',
-        password: 'password123',
+  group('restoreSession', () {
+    test('restores a complete session and sets the auth header', () async {
+      when(() => local.getAccessToken()).thenAnswer((_) async => 'access');
+      when(() => local.getUser()).thenReturn(userModel);
+
+      final result = await repository.restoreSession();
+
+      expect(result, Result<Object?>.ok(user));
+      expect(repository.currentUser, user);
+      expect(repository.isAuthenticated, isTrue);
+      verify(() => dioClient.setAuthToken('access')).called(1);
+    });
+
+    test('returns null when nothing is stored', () async {
+      when(() => local.getAccessToken()).thenAnswer((_) async => null);
+      when(() => local.getUser()).thenReturn(null);
+
+      final result = await repository.restoreSession();
+
+      expect(result, const Result<Object?>.ok(null));
+      expect(repository.isAuthenticated, isFalse);
+      verifyNever(() => local.clearAll());
+    });
+
+    test('wipes a token that has no cached user', () async {
+      when(() => local.getAccessToken()).thenAnswer((_) async => 'access');
+      when(() => local.getUser()).thenReturn(null);
+
+      final result = await repository.restoreSession();
+
+      expect(result, const Result<Object?>.ok(null));
+      expect(repository.isAuthenticated, isFalse);
+      verify(() => local.clearAll()).called(1);
+      verifyNever(() => dioClient.setAuthToken(any()));
+    });
+
+    test('returns CacheFailure when secure storage fails', () async {
+      when(() => local.getAccessToken())
+          .thenThrow(const CacheException(message: 'keychain locked'));
+
+      final result = await repository.restoreSession();
+
+      expect(
+        result,
+        const Result<Object?>.error(CacheFailure(message: 'keychain locked')),
+      );
+    });
+  });
+
+  group('login', () {
+    test('persists tokens and user, then starts the session', () async {
+      when(
+        () => remote.login(email: 'a@b.c', password: 'pw'),
+      ).thenAnswer((_) async => authResponse);
+      final sessions = <Object?>[];
+      final subscription = repository.sessionChanges.listen(sessions.add);
+
+      final result = await repository.login(email: 'a@b.c', password: 'pw');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(result, Result<Object?>.ok(user));
+      expect(repository.currentUser, user);
+      expect(sessions, [user]);
+      verify(
+        () => local.saveTokens(accessToken: 'access', refreshToken: 'refresh'),
+      ).called(1);
+      verify(() => local.saveUser(userModel)).called(1);
+      verify(() => dioClient.setAuthToken('access')).called(1);
+      await subscription.cancel();
+    });
+
+    test('maps a ServerException to ServerFailure', () async {
+      when(
+        () => remote.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(
+        const ServerException(message: 'Invalid credentials', statusCode: 401),
       );
 
-      expect(result, Right<Failure, User>(tUser));
-      verify(() => mockLocal.saveTokens(
-            accessToken: 'access-token',
-            refreshToken: 'refresh-token',
-          )).called(1);
-      verify(() => mockDioClient.setAuthToken('access-token')).called(1);
-      verify(() => mockLocal.saveUser(tUserModel)).called(1);
+      final result = await repository.login(email: 'a@b.c', password: 'x');
+
+      expect(
+        result,
+        const Result<Object?>.error(
+          ServerFailure(message: 'Invalid credentials', statusCode: 401),
+        ),
+      );
+      expect(repository.isAuthenticated, isFalse);
     });
 
-    test('returns Left(ServerFailure) on ServerException', () async {
-      when(() => mockRemote.login(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-          )).thenThrow(const ServerException(message: 'Invalid credentials', statusCode: 401));
+    test('maps a NetworkException to NetworkFailure', () async {
+      when(
+        () => remote.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(const NetworkException(message: 'No internet connection'));
 
-      final result =
-          await repository.login(email: 'test@example.com', password: 'wrong');
+      final result = await repository.login(email: 'a@b.c', password: 'x');
 
-      expect(result,
-          const Left<Failure, User>(
-              ServerFailure(message: 'Invalid credentials', statusCode: 401)));
-    });
-
-    test('returns Left(NetworkFailure) on NetworkException', () async {
-      when(() => mockRemote.login(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-          )).thenThrow(const NetworkException(message: 'No internet'));
-
-      final result = await repository.login(
-          email: 'test@example.com', password: 'password123');
-
-      expect(result,
-          const Left<Failure, User>(NetworkFailure(message: 'No internet')));
+      expect(
+        result,
+        const Result<Object?>.error(
+          NetworkFailure(message: 'No internet connection'),
+        ),
+      );
     });
   });
 
-  // ─────────────────────────────────────────────────────────────
-  // register()
-  // ─────────────────────────────────────────────────────────────
-
-  group('register()', () {
-    test('returns Right(User) on success', () async {
-      when(() => mockRemote.register(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-            name: any(named: 'name'),
-          )).thenAnswer((_) async => tAuthResponse);
-      when(() => mockLocal.saveTokens(
-            accessToken: any(named: 'accessToken'),
-            refreshToken: any(named: 'refreshToken'),
-          )).thenAnswer((_) async {});
-      when(() => mockDioClient.setAuthToken(any())).thenReturn(null);
-      when(() => mockLocal.saveUser(any())).thenAnswer((_) async {});
+  group('register', () {
+    test('starts a session like login does', () async {
+      when(
+        () => remote.register(email: 'a@b.c', password: 'pw', name: 'Test'),
+      ).thenAnswer((_) async => authResponse);
 
       final result = await repository.register(
-        email: 'new@example.com',
-        password: 'password123',
-        name: 'New User',
+        email: 'a@b.c',
+        password: 'pw',
+        name: 'Test',
       );
 
-      expect(result, Right<Failure, User>(tUser));
-    });
-
-    test('returns Left(ServerFailure) on ServerException', () async {
-      when(() => mockRemote.register(
-            email: any(named: 'email'),
-            password: any(named: 'password'),
-            name: any(named: 'name'),
-          )).thenThrow(const ServerException(message: 'Email taken'));
-
-      final result = await repository.register(
-          email: 'taken@example.com', password: 'password123');
-
-      expect(result,
-          const Left<Failure, User>(ServerFailure(message: 'Email taken')));
+      expect(result, Result<Object?>.ok(user));
+      expect(repository.isAuthenticated, isTrue);
     });
   });
 
-  // ─────────────────────────────────────────────────────────────
-  // getCurrentUser()
-  // ─────────────────────────────────────────────────────────────
-
-  group('getCurrentUser()', () {
-    test('returns Right(User) and restores DioClient token', () async {
-      when(() => mockLocal.getUser())
-          .thenAnswer((_) async => tUserModel);
-      when(() => mockLocal.getAccessToken())
-          .thenAnswer((_) async => 'stored-token');
-      when(() => mockDioClient.setAuthToken(any())).thenReturn(null);
-
-      final result = await repository.getCurrentUser();
-
-      expect(result, Right<Failure, User?>(tUser));
-      verify(() => mockDioClient.setAuthToken('stored-token')).called(1);
+  group('logout', () {
+    setUp(() async {
+      when(
+        () => remote.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => authResponse);
+      await repository.login(email: 'a@b.c', password: 'pw');
     });
 
-    test('returns Right(null) when no user is cached', () async {
-      when(() => mockLocal.getUser()).thenAnswer((_) async => null);
+    test('ends the session and clears local data and pending sync', () async {
+      final result = await repository.logout();
 
-      final result = await repository.getCurrentUser();
-
-      expect(result, const Right<Failure, User?>(null));
-      verifyNever(() => mockDioClient.setAuthToken(any()));
+      expect(result, const Result<void>.ok(null));
+      expect(repository.isAuthenticated, isFalse);
+      verify(() => remote.logout()).called(1);
+      verify(() => local.clearAll()).called(1);
+      verify(() => syncQueue.clearPending()).called(1);
+      verify(() => dioClient.clearAuthToken()).called(1);
     });
 
-    test('returns Left(CacheFailure) on CacheException', () async {
-      when(() => mockLocal.getUser())
-          .thenThrow(const CacheException(message: 'Read error'));
+    test('ends the in-memory session even if storage cleanup fails', () async {
+      when(() => local.clearAll())
+          .thenThrow(const CacheException(message: 'disk full'));
 
-      final result = await repository.getCurrentUser();
+      final result = await repository.logout();
 
-      expect(result,
-          const Left<Failure, User?>(CacheFailure(message: 'Read error')));
+      expect(
+        result,
+        const Result<void>.error(CacheFailure(message: 'disk full')),
+      );
+      expect(repository.isAuthenticated, isFalse);
+      verify(() => dioClient.clearAuthToken()).called(1);
     });
   });
 
-  // ─────────────────────────────────────────────────────────────
-  // logout()
-  // ─────────────────────────────────────────────────────────────
+  test('expireSession ends the session without calling the server', () async {
+    when(
+      () => remote.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => authResponse);
+    await repository.login(email: 'a@b.c', password: 'pw');
+    final sessions = <Object?>[];
+    final subscription = repository.sessionChanges.listen(sessions.add);
 
-  group('logout()', () {
-    test('clears tokens, sync queue and DioClient header on success', () async {
-      when(() => mockRemote.logout()).thenAnswer((_) async {});
-      when(() => mockLocal.clearAll()).thenAnswer((_) async {});
-      when(() => mockSyncQueue.clearPending()).thenAnswer((_) async {});
-      when(() => mockDioClient.clearAuthToken()).thenReturn(null);
+    await repository.expireSession();
+    await Future<void>.delayed(Duration.zero);
 
-      final result = await repository.logout();
-
-      expect(result, const Right<Failure, Unit>(unit));
-      verify(() => mockLocal.clearAll()).called(1);
-      verify(() => mockSyncQueue.clearPending()).called(1);
-      verify(() => mockDioClient.clearAuthToken()).called(1);
-    });
-
-    test('succeeds even when remote logout fails', () async {
-      when(() => mockRemote.logout())
-          .thenThrow(const ServerException(message: 'Server error'));
-      when(() => mockLocal.clearAll()).thenAnswer((_) async {});
-      when(() => mockSyncQueue.clearPending()).thenAnswer((_) async {});
-      when(() => mockDioClient.clearAuthToken()).thenReturn(null);
-
-      final result = await repository.logout();
-
-      // Remote failure should not block local cleanup.
-      expect(result, const Right<Failure, Unit>(unit));
-      verify(() => mockLocal.clearAll()).called(1);
-    });
-
-    test('returns Left(CacheFailure) when local clearAll fails', () async {
-      when(() => mockRemote.logout()).thenAnswer((_) async {});
-      when(() => mockLocal.clearAll())
-          .thenThrow(const CacheException(message: 'Clear failed'));
-
-      final result = await repository.logout();
-
-      expect(result,
-          const Left<Failure, Unit>(CacheFailure(message: 'Clear failed')));
-    });
+    expect(repository.isAuthenticated, isFalse);
+    expect(sessions, [null]);
+    verifyNever(() => remote.logout());
+    verify(() => local.clearAll()).called(1);
+    await subscription.cancel();
   });
 }
