@@ -23,7 +23,7 @@ Production-ready Flutter boilerplate with Clean Architecture, BLoC state managem
 - [Core Modules Explained](#core-modules-explained)
   - [Error Handling](#1-error-handling)
   - [Network Layer (Dio)](#2-network-layer-dio)
-  - [Cache Layer (SharedPreferences)](#3-cache-layer-sharedpreferences)
+  - [Cache Layer (SharedPreferences + Secure Storage)](#3-cache-layer-sharedpreferences--secure-storage)
   - [Theme System](#4-theme-system)
   - [Localization (Multi-language)](#5-localization-multi-language)
   - [Navigation](#6-navigation)
@@ -70,9 +70,10 @@ Production-ready Flutter boilerplate with Clean Architecture, BLoC state managem
 | Architecture | Clean Architecture | Separation of concerns |
 | State Management | BLoC / Cubit | Predictable state changes |
 | Dependency Injection | GetIt | Service locator pattern |
-| Routing | Auto Route | Type-safe navigation |
-| HTTP Client | Dio | API requests with interceptors |
-| Local Storage | SharedPreferences | Key-value cache |
+| Routing | Auto Route | Type-safe navigation with auth guard |
+| HTTP Client | Dio | API requests with token refresh interceptor |
+| Local Storage | SharedPreferences | Key-value cache (non-sensitive data) |
+| Secure Storage | Flutter Secure Storage | Keychain/Keystore for auth tokens |
 | **Offline Database** | **Hive CE** | **Offline-first data persistence** |
 | **Connectivity** | **Connectivity Plus** | **Network status monitoring** |
 | Localization | Easy Localization | Multi-language support |
@@ -106,20 +107,30 @@ flutter pub get
 
 # 4. Generate code (Freezed, Auto Route, etc.)
 dart run build_runner build --delete-conflicting-outputs
+
+# 5. Create your local environment file
+cp .env.dev.example .env.dev
+
+# 6. Generate platform folders (android/ and ios/ are not committed)
+flutter create --platforms=android,ios .
 ```
 
 ### Running the App
 
+The API base URL is read from the `BASE_URL` compile-time variable. Pass it with `--dart-define-from-file`:
+
 ```bash
 # Run in debug mode
-flutter run
+flutter run --dart-define-from-file=.env.dev
 
 # Run in release mode
-flutter run --release
+flutter run --release --dart-define-from-file=.env.dev
 
 # Run on specific device
-flutter run -d <device_id>
+flutter run -d <device_id> --dart-define-from-file=.env.dev
 ```
+
+Without the flag, `BASE_URL` falls back to `https://api.example.com`.
 
 ---
 
@@ -178,7 +189,7 @@ When user taps "Login" button:
         │
         ▼
 ┌───────────────┐
-│  LoginPage    │  ──▶  Sends LoginRequested event
+│  LoginPage    │  ──▶  Sends LoginEvent
 └───────┬───────┘
         │
         ▼
@@ -200,11 +211,13 @@ When user taps "Login" button:
         │
         ▼
 ┌───────────────┐
-│RemoteDataSrc  │  ──▶  Makes API call via Dio
+│RemoteDataSrc  │  ──▶  Makes API call via DioClient
 └───────┬───────┘
         │
         ▼
-     Response flows back up the chain
+     Response flows back up the chain.
+     On success the repository saves tokens to secure storage,
+     sets the Authorization header, and caches the user.
 ```
 
 ### Why This Architecture?
@@ -224,9 +237,13 @@ When user taps "Login" button:
 
 ```
 lib/
-├── main.dart              # App entry point with error handling
-├── app.dart               # Root widget with providers
-└── injection_container.dart   # Dependency injection setup
+├── main.dart                  # App entry point with error handling
+├── app.dart                   # Root widget with providers
+├── injection_container.dart   # Dependency injection setup
+└── config/
+    └── routes/
+        ├── app_router.dart    # Route tree (auto_route)
+        └── auth_guard.dart    # Protects routes that need a logged-in user
 ```
 
 ### Core Module
@@ -239,6 +256,7 @@ lib/core/
 ├── cache/                    # Local storage
 │   ├── cache_keys.dart       # Enum of all cache keys
 │   ├── cache_manager.dart    # SharedPreferences wrapper
+│   ├── secure_cache_manager.dart # Keychain/Keystore wrapper (tokens)
 │   └── cacheable_base_model.dart
 │
 ├── constants/                # App-wide constants
@@ -261,11 +279,8 @@ lib/core/
 │   ├── localization_manager.dart
 │   └── supported_locales.dart
 │
-├── navigation/               # Navigation helpers
-│   └── navigation_manager.dart
-│
 ├── network/                  # HTTP client
-│   └── dio_client.dart       # Dio singleton with interceptors
+│   └── dio_client.dart       # Dio wrapper with logging + token refresh
 │
 ├── theme/                    # App themes
 │   ├── app_theme.dart        # Base theme interface
@@ -382,72 +397,93 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),  // Handle failure
-      (user) => emit(AuthAuthenticated(user)),        // Handle success
+      (user) => emit(Authenticated(user)),            // Handle success
     );
   }
 }
 ```
 
+`DioClient` converts `DioException`s into `ServerException` (bad response, cancel) or `NetworkException` (timeouts, no connection), so data sources only deal with the app's own exception types.
+
 ### 2. Network Layer (Dio)
 
-Singleton HTTP client with automatic token handling:
+`DioClient` is registered in GetIt. Inject it through constructors instead of reaching for a global:
 
 ```dart
-// Make GET request
-final response = await DioClient.instance.get('/users');
+class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
+  ProductRemoteDataSourceImpl({required this.dioClient});
 
-// Make POST request
-final response = await DioClient.instance.post(
-  '/login',
-  data: {'email': email, 'password': password},
+  final DioClient dioClient;
+
+  Future<List<ProductModel>> getProducts() async {
+    final response = await dioClient.get<List<dynamic>>('/products');
+    // ...
+  }
+}
+
+// Registration (injection_container.dart)
+sl.registerLazySingleton<ProductRemoteDataSource>(
+  () => ProductRemoteDataSourceImpl(dioClient: sl()),
 );
-
-// Set auth token (after login)
-DioClient.instance.setAuthToken('your-jwt-token');
-
-// Clear auth token (after logout)
-DioClient.instance.clearAuthToken();
 ```
+
+Available methods: `get`, `post`, `put`, `patch`, `delete`, `setAuthToken`, `clearAuthToken`.
 
 **Built-in Interceptors:**
 
 | Interceptor | Function |
 |-------------|----------|
-| Logging | Logs requests/responses in debug mode |
-| Error Handling | Detects 401 errors for auto-logout |
+| Logging | Logs requests/responses (debug builds only) |
+| Token Refresh | On a 401, calls `ApiConstants.refreshToken` with the stored refresh token, saves the new tokens and retries the original request once. If the refresh fails, it clears the tokens and the sync queue. |
 
-### 3. Cache Layer (SharedPreferences)
+Token refresh is wired in `injection_container.dart` via `DioClient.configureTokenRefresh(...)`, once the auth data sources are registered. The refresh call uses a separate `Dio` instance so it never passes through the interceptor itself.
 
-Type-safe local storage:
+### 3. Cache Layer (SharedPreferences + Secure Storage)
+
+There are two stores, split by sensitivity:
+
+| Store | Class | Backed by | Use for |
+|-------|-------|-----------|---------|
+| Cache | `CacheManager` | SharedPreferences | Theme, locale, onboarding flag, cached user profile |
+| Secure | `SecureCacheManager` | Keychain (iOS) / Keystore (Android) | Access & refresh tokens, other secrets |
+
+`CacheManager.init()` is awaited in `main.dart` before `runApp`. Every accessor throws a `StateError` if called before that.
+
+**CacheManager** (keys are the typed `CacheKeys` enum):
 
 ```dart
-// Save string
-await CacheManager.instance.setString(CacheKeys.accessToken, 'token123');
+final cache = sl<CacheManager>(); // or inject via constructor
 
-// Get string
-final token = CacheManager.instance.getString(CacheKeys.accessToken);
+// Boolean
+await cache.setBool(CacheKeys.onboardingCompleted, value: true);
+final completed = cache.getBool(CacheKeys.onboardingCompleted);
 
-// Save boolean
-await CacheManager.instance.setBool(CacheKeys.onboardingCompleted, value: true);
+// String
+await cache.setString(CacheKeys.themeMode, 'dark');
 
-// Get boolean
-final completed = CacheManager.instance.getBool(CacheKeys.onboardingCompleted);
+// Object (must implement CacheableModel)
+await cache.setObject(CacheKeys.user, userModel);
+final user = cache.getObject(CacheKeys.user, UserModel.fromJson);
 
-// Save object (must implement CacheableModel)
-await CacheManager.instance.setObject(CacheKeys.user, userModel);
+// List (add your own key to the CacheKeys enum first)
+await cache.setList(CacheKeys.favorites, items);
 
-// Get object
-final user = CacheManager.instance.getObject(
-  CacheKeys.user,
-  UserModel.fromJson,
-);
-
-// Save list
-await CacheManager.instance.setList(CacheKeys.favorites, items);
-
-// Clear all
-await CacheManager.instance.clear();
+// Remove / clear
+await cache.remove(CacheKeys.user);
+await cache.clear();
 ```
+
+**SecureCacheManager** (async, string keys):
+
+```dart
+final secure = sl<SecureCacheManager>();
+
+await secure.write('access_token', token);
+final token = await secure.read('access_token');
+await secure.delete('access_token');
+```
+
+> Never put tokens in `CacheManager`. SharedPreferences is stored as plain text on the device. Auth tokens are handled by `AuthLocalDataSource`, which writes them to `SecureCacheManager`.
 
 ### 4. Theme System
 
@@ -520,23 +556,7 @@ newLanguage(
 
 ### 6. Navigation
 
-**Using NavigationManager:**
-
-```dart
-// Push new screen
-NavigationManager.instance.push(NavigationRoute.home);
-
-// Replace current screen
-NavigationManager.instance.replace(NavigationRoute.login);
-
-// Pop current screen
-NavigationManager.instance.pop();
-
-// Replace all screens
-NavigationManager.instance.replaceAll([NavigationRoute.home]);
-```
-
-**Using Auto Route directly:**
+Navigation uses auto_route directly. Routes are declared in `lib/config/routes/app_router.dart`, and `AppRouter` is registered in GetIt.
 
 ```dart
 // Push
@@ -552,6 +572,21 @@ context.router.replaceAll([const HomeRoute()]);
 context.router.pop();
 ```
 
+**Auth guard:**
+
+`MainNavigationRoute` (and its `Home`/`Settings` children) is protected by `AuthGuard`. The guard reads the access token from `AuthLocalDataSource`. With no token, it pushes `/login` and blocks the original navigation.
+
+```dart
+AutoRoute(
+  page: MainNavigationRoute.page,
+  guards: [_authGuard], // injected into AppRouter's constructor
+  children: [
+    AutoRoute(page: HomeRoute.page, initial: true),
+    AutoRoute(page: SettingsRoute.page),
+  ],
+),
+```
+
 ### 7. Reusable Widgets
 
 | Widget | Purpose | Location |
@@ -561,6 +596,7 @@ context.router.pop();
 | `AppCachedImage` | Image with caching | `core/widgets/app_cached_image.dart` |
 | `LoadingIndicator` | Loading spinner | `core/widgets/loading_indicator.dart` |
 | `AppErrorWidget` | Error display | `core/widgets/error_widget.dart` |
+| `OfflineBanner`, `OfflineIndicatorDot`, `OfflineAwareButton`, `ConnectivityListener` | Connectivity UI | `core/widgets/offline_indicator.dart` |
 
 ### 8. Offline-First Architecture
 
@@ -601,41 +637,47 @@ The app is designed to work seamlessly offline with automatic sync when back onl
 
 #### Core Components
 
-**1. ConnectivityService** - Network monitoring:
+All offline components are plain classes registered as lazy singletons in `injection_container.dart` (`_initOfflineFirst`). There are no static `.instance` accessors. Inject them through constructors, or resolve them with `sl<T>()` at the composition root.
+
+`sl<OfflineManager>().init()` is awaited during `initDependencies()`. It initializes Hive and the connectivity service, recovers operations left `inProgress` by a previous session, and starts listening for connectivity changes.
+
+**1. ConnectivityService** - Network monitoring (connectivity_plus plus a real DNS lookup):
 
 ```dart
-// Check if online
-if (ConnectivityService.instance.isOnline) {
+final connectivity = sl<ConnectivityService>();
+
+if (connectivity.isOnline) {
   // Make API call
 }
 
-// Listen to changes
-ConnectivityService.instance.onStatusChanged.listen((status) {
+connectivity.onStatusChanged.listen((status) {
   if (status == ConnectivityStatus.online) {
-    print('Back online!');
+    debugPrint('Back online!');
   }
 });
 ```
 
-**2. HiveManager** - Database initialization:
+**2. HiveManager** - Database initialization and boxes:
 
 ```dart
-// Initialize at app startup (done in injection_container.dart)
-await HiveManager.instance.init();
+final hive = sl<HiveManager>();
 
-// Access boxes
-final syncBox = HiveManager.instance.getSyncQueueBox();
-final settingsBox = HiveManager.instance.getSettingsBox();
+final syncBox = hive.getSyncQueueBox();
+final settingsBox = hive.getSettingsBox();
 
-// Clear all data (on logout)
-await HiveManager.instance.clearAll();
+// Open a feature-specific box
+final productsBox = await hive.openBox<Map<dynamic, dynamic>>('products');
+
+// Clear all data
+await hive.clearAll();
 ```
 
-**3. SyncQueue** - Queue offline operations:
+**3. SyncQueue** - Queue offline operations (persisted in Hive, exponential backoff on retry):
 
 ```dart
-// Add operation to queue
-await SyncQueue.instance.addOperation(
+final queue = sl<SyncQueue>();
+
+await queue.addOperation(
   operationType: SyncOperationType.create,
   entityType: 'product',
   entityId: 'product-123',
@@ -643,19 +685,20 @@ await SyncQueue.instance.addOperation(
   endpoint: '/api/products',
 );
 
-// Get pending count
-final pending = SyncQueue.instance.pendingCount;
+final pending = queue.pendingCount;
 
-// Process queue when online
-final result = await SyncQueue.instance.processQueue();
-print('Synced: ${result.succeeded}/${result.processed}');
+final result = await queue.processQueue();
+debugPrint('Synced: ${result.succeeded}/${result.processed}');
 ```
 
-**4. OfflineManager** - Orchestrates everything:
+Pending operations are cleared on logout (`AuthRepository.logout` and the token-refresh failure path), so one user's queued writes are never sent with another user's token.
+
+**4. OfflineManager** - Orchestrates everything (auto-syncs when connectivity returns):
 
 ```dart
-// Queue and auto-sync
-await OfflineManager.instance.queueOperation(
+final offline = sl<OfflineManager>();
+
+await offline.queueOperation(
   operationType: SyncOperationType.update,
   entityType: 'user',
   entityId: 'user-1',
@@ -663,12 +706,10 @@ await OfflineManager.instance.queueOperation(
   endpoint: '/api/users/user-1',
 );
 
-// Manual sync
-await OfflineManager.instance.processQueue();
+await offline.processQueue();
 
-// Listen to status changes
-OfflineManager.instance.onStatusChanged.listen((status) {
-  print('Online: ${status.isOnline}, Pending: ${status.pendingCount}');
+offline.onStatusChanged.listen((status) {
+  debugPrint('Online: ${status.isOnline}, Pending: ${status.pendingCount}');
 });
 ```
 
@@ -1138,16 +1179,28 @@ Future<void> initDependencies() async {
 
 ### Step 6: Add Route
 
-In `app_router.dart`:
+In `lib/config/routes/app_router.dart`, add the page import and the route. If the screen needs a logged-in user, nest it under `MainNavigationRoute` so it inherits `AuthGuard`:
 
 ```dart
-@AutoRouterConfig()
-class AppRouter extends $AppRouter {
+@AutoRouterConfig(replaceInRouteName: 'Page,Route')
+class AppRouter extends RootStackRouter {
+  AppRouter(this._authGuard);
+
+  final AuthGuard _authGuard;
+
   @override
   List<AutoRoute> get routes => [
-    // ... existing routes
-    AutoRoute(page: ProductsRoute.page),
-  ];
+        // ... existing routes
+        AutoRoute(
+          page: MainNavigationRoute.page,
+          guards: [_authGuard],
+          children: [
+            AutoRoute(page: HomeRoute.page, initial: true),
+            AutoRoute(page: SettingsRoute.page),
+            AutoRoute(page: ProductsRoute.page), // new
+          ],
+        ),
+      ];
 }
 ```
 
@@ -1167,23 +1220,29 @@ Events are **inputs** that trigger state changes:
 
 ```dart
 abstract class AuthEvent extends Equatable {
+  const AuthEvent();
+
   @override
   List<Object?> get props => [];
 }
 
-class LoginRequested extends AuthEvent {
+class CheckAuthStatusEvent extends AuthEvent {
+  const CheckAuthStatusEvent();
+}
+
+class LoginEvent extends AuthEvent {
   final String email;
   final String password;
 
-  LoginRequested({required this.email, required this.password});
+  const LoginEvent({required this.email, required this.password});
 
   @override
   List<Object?> get props => [email, password];
 }
 
-class LogoutRequested extends AuthEvent {}
-
-class CheckAuthStatus extends AuthEvent {}
+class LogoutEvent extends AuthEvent {
+  const LogoutEvent();
+}
 ```
 
 ### States
@@ -1192,29 +1251,37 @@ States are **outputs** that represent UI state:
 
 ```dart
 abstract class AuthState extends Equatable {
+  const AuthState();
+
   @override
   List<Object?> get props => [];
 }
 
-class AuthInitial extends AuthState {}
+class AuthInitial extends AuthState {
+  const AuthInitial();
+}
 
-class AuthLoading extends AuthState {}
+class AuthLoading extends AuthState {
+  const AuthLoading();
+}
 
-class AuthAuthenticated extends AuthState {
+class Authenticated extends AuthState {
   final User user;
 
-  AuthAuthenticated(this.user);
+  const Authenticated(this.user);
 
   @override
   List<Object?> get props => [user];
 }
 
-class AuthUnauthenticated extends AuthState {}
+class Unauthenticated extends AuthState {
+  const Unauthenticated();
+}
 
 class AuthError extends AuthState {
   final String message;
 
-  AuthError(this.message);
+  const AuthError(this.message);
 
   @override
   List<Object?> get props => [message];
@@ -1223,23 +1290,29 @@ class AuthError extends AuthState {
 
 ### BLoC Class
 
-BLoC connects events to states:
+BLoC connects events to states (abridged from `auth_bloc.dart`):
 
 ```dart
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUser loginUser;
+  final RegisterUser registerUser;
   final LogoutUser logoutUser;
+  final GetCurrentUser getCurrentUser;
 
   AuthBloc({
     required this.loginUser,
+    required this.registerUser,
     required this.logoutUser,
+    required this.getCurrentUser,
   }) : super(const AuthInitial()) {
-    on<LoginRequested>(_onLoginRequested);
-    on<LogoutRequested>(_onLogoutRequested);
+    on<CheckAuthStatusEvent>(_onCheckAuthStatus);
+    on<LoginEvent>(_onLogin);
+    on<RegisterEvent>(_onRegister);
+    on<LogoutEvent>(_onLogout);
   }
 
-  Future<void> _onLoginRequested(
-    LoginRequested event,
+  Future<void> _onLogin(
+    LoginEvent event,
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
@@ -1250,16 +1323,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (user) => emit(AuthAuthenticated(user)),
+      (user) => emit(Authenticated(user)),
     );
   }
 
-  Future<void> _onLogoutRequested(
-    LogoutRequested event,
+  Future<void> _onLogout(
+    LogoutEvent event,
     Emitter<AuthState> emit,
   ) async {
-    await logoutUser(NoParams());
-    emit(const AuthUnauthenticated());
+    emit(const AuthLoading());
+
+    final result = await logoutUser(const NoParams());
+
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(const Unauthenticated()),
+    );
   }
 }
 ```
@@ -1273,7 +1352,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 ElevatedButton(
   onPressed: () {
     context.read<AuthBloc>().add(
-      LoginRequested(email: email, password: password),
+      LoginEvent(email: email, password: password),
     );
   },
   child: Text('Login'),
@@ -1291,7 +1370,7 @@ BlocBuilder<AuthBloc, AuthState>(
     if (state is AuthError) {
       return Text(state.message);
     }
-    if (state is AuthAuthenticated) {
+    if (state is Authenticated) {
       return Text('Welcome, ${state.user.name}');
     }
     return const LoginForm();
@@ -1304,8 +1383,8 @@ BlocBuilder<AuthBloc, AuthState>(
 ```dart
 BlocListener<AuthBloc, AuthState>(
   listener: (context, state) {
-    if (state is AuthAuthenticated) {
-      context.router.replaceAll([const HomeRoute()]);
+    if (state is Authenticated) {
+      context.router.replaceAll([const MainNavigationRoute()]);
     }
     if (state is AuthError) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1325,27 +1404,39 @@ BlocListener<AuthBloc, AuthState>(
 
 | Type | Method | When Created | Use Case |
 |------|--------|--------------|----------|
-| Factory | `registerFactory` | Every time | BLoCs, Cubits |
-| Lazy Singleton | `registerLazySingleton` | First access | UseCases, Repositories |
-| Singleton | `registerSingleton` | Immediately | Core services |
+| Factory | `registerFactory` | Every time | Screen-scoped BLoCs/Cubits (`AuthBloc`, `ConnectivityCubit`) |
+| Lazy Singleton | `registerLazySingleton` | First access | Core services, data sources, repositories, UseCases, router |
+| Lazy Singleton | `registerLazySingleton` | First access | App-wide cubits whose state must be shared (`ThemeCubit`, `LocaleCubit`) |
+| Singleton | `registerSingleton` | Immediately | Pre-built instances |
+
+> `ThemeCubit` and `LocaleCubit` are lazy singletons on purpose. With `registerFactory`, every `sl<ThemeCubit>()` call would return a new instance that silently drifts from the one owned by the root `BlocProvider`.
 
 ### How to Use
 
-**Registering:**
+**Registering** (everything is wired in `injection_container.dart`):
 
 ```dart
 // Factory - new instance each time
 sl.registerFactory<AuthBloc>(() => AuthBloc(
   loginUser: sl(),
+  registerUser: sl(),
   logoutUser: sl(),
+  getCurrentUser: sl(),
 ));
 
 // Lazy Singleton - one instance, created when first needed
 sl.registerLazySingleton<LoginUser>(() => LoginUser(sl()));
-
-// Singleton - one instance, created immediately
-sl.registerSingleton<DioClient>(DioClient.instance);
+sl.registerLazySingleton<DioClient>(() => DioClient.instance);
 ```
+
+The current initialization order in `initDependencies()` is:
+
+1. Core: `CacheManager`, `SecureCacheManager`, `DioClient`, `LocalizationManager`
+2. Offline-first: `HiveManager`, `ConnectivityService`, `SyncQueue`, `OfflineManager` (then `await sl<OfflineManager>().init()`)
+3. Auth: data sources, repository, use cases, `AuthBloc`, `AuthGuard`, `AppRouter`, then `DioClient.configureTokenRefresh(...)`
+4. Settings: `ThemeCubit`, `LocaleCubit`
+
+After `initDependencies()`, `main.dart` awaits `sl<CacheManager>().init()` and `EasyLocalization.ensureInitialized()`, then calls `runApp`.
 
 **Accessing:**
 
@@ -1363,21 +1454,22 @@ BlocProvider(
 
 **Registration Order:**
 
-Dependencies must be registered before their dependents:
+`registerLazySingleton` and `registerFactory` factories only run when the type is first resolved, so their relative order does not matter. Order *does* matter wherever a type is resolved eagerly during `initDependencies()`. For example, `await sl<OfflineManager>().init()` and `sl<DioClient>().configureTokenRefresh(...)` resolve immediately, so everything they depend on must already be registered:
 
 ```dart
-// ✅ Correct order
-sl.registerLazySingleton<DioClient>(() => DioClient.instance);
-sl.registerLazySingleton<AuthRemoteDataSource>(
-  () => AuthRemoteDataSourceImpl(dioClient: sl()),  // sl() gets DioClient
+// ✅ Works - AuthLocalDataSource is registered before it's resolved
+sl.registerLazySingleton<AuthLocalDataSource>(() => AuthLocalDataSourceImpl(...));
+sl<DioClient>().configureTokenRefresh(
+  getRefreshToken: () => sl<AuthLocalDataSource>().getRefreshToken(),
+  // ...
 );
 
-// ❌ Wrong order - DioClient not registered yet
-sl.registerLazySingleton<AuthRemoteDataSource>(
-  () => AuthRemoteDataSourceImpl(dioClient: sl()),  // Error!
-);
-sl.registerLazySingleton<DioClient>(() => DioClient.instance);
+// ❌ Fails - OfflineManager's dependencies are not registered yet
+await sl<OfflineManager>().init();
+sl.registerLazySingleton<SyncQueue>(() => SyncQueue(sl(), sl()));
 ```
+
+Resolve dependencies from `sl` only in the composition root (`injection_container.dart`, `app.dart`). Everywhere else, take them as constructor parameters so tests can pass fakes or mocks.
 
 ---
 
@@ -1388,39 +1480,51 @@ sl.registerLazySingleton<DioClient>(() => DioClient.instance);
 ```
 test/
 ├── fixtures/                    # Test data (JSON files)
+│   ├── fixture_reader.dart      # fixture('user.json') helper
 │   ├── user.json
-│   └── products.json
+│   └── auth_response.json
 │
 ├── helpers/                     # Test utilities
 │   ├── pump_app.dart            # Widget test helper
-│   └── test_helpers.dart        # Test data factory
+│   └── test_helpers.dart        # TestData factory (testUser, userJson, ...)
 │
 ├── mocks/                       # Mock classes
-│   └── mocks.dart               # Mocktail mocks
+│   └── mocks.dart               # Mocktail mocks + registerFallbackValues()
 │
-└── features/                    # Feature tests
-    └── auth/
-        ├── data/
-        │   ├── datasources/
-        │   └── repositories/
-        ├── domain/
-        │   └── usecases/
-        │       └── login_user_test.dart
+├── core/
+│   └── offline/
+│       ├── connectivity_cubit_test.dart
+│       └── sync_queue_test.dart
+│
+└── features/
+    ├── auth/
+    │   ├── data/
+    │   │   └── repositories/
+    │   │       └── auth_repository_impl_test.dart
+    │   ├── domain/
+    │   │   └── usecases/        # login, register, logout, get_current_user
+    │   └── presentation/
+    │       └── bloc/
+    │           └── auth_bloc_test.dart
+    └── settings/
         └── presentation/
             └── bloc/
-                └── auth_bloc_test.dart
+                └── theme_cubit_test.dart
 ```
+
+All mocks live in `test/mocks/mocks.dart`. Reuse them instead of declaring new `Mock` classes inside test files.
 
 ### Writing Tests
 
 **UseCase Test:**
 
 ```dart
+import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:dartz/dartz.dart';
 
-class MockAuthRepository extends Mock implements AuthRepository {}
+import '../../../../helpers/test_helpers.dart';
+import '../../../../mocks/mocks.dart';
 
 void main() {
   late LoginUser usecase;
@@ -1431,7 +1535,7 @@ void main() {
     usecase = LoginUser(mockRepository);
   });
 
-  final testUser = User(id: '1', email: 'test@test.com', name: 'Test');
+  final testUser = TestData.testUser;
 
   test('should return User when login is successful', () async {
     // Arrange
@@ -1459,7 +1563,7 @@ void main() {
     when(() => mockRepository.login(
       email: any(named: 'email'),
       password: any(named: 'password'),
-    )).thenAnswer((_) async => Left(ServerFailure(message: 'Error')));
+    )).thenAnswer((_) async => const Left(ServerFailure(message: 'Error')));
 
     // Act
     final result = await usecase(LoginParams(
@@ -1468,7 +1572,7 @@ void main() {
     ));
 
     // Assert
-    expect(result, Left(ServerFailure(message: 'Error')));
+    expect(result, const Left(ServerFailure(message: 'Error')));
   });
 }
 ```
@@ -1478,29 +1582,43 @@ void main() {
 ```dart
 import 'package:bloc_test/bloc_test.dart';
 
+import '../../../../helpers/test_helpers.dart';
+import '../../../../mocks/mocks.dart';
+
 void main() {
   late AuthBloc bloc;
   late MockLoginUser mockLoginUser;
 
+  setUpAll(registerFallbackValues);
+
   setUp(() {
     mockLoginUser = MockLoginUser();
-    bloc = AuthBloc(loginUser: mockLoginUser);
+    bloc = AuthBloc(
+      loginUser: mockLoginUser,
+      registerUser: MockRegisterUser(),
+      logoutUser: MockLogoutUser(),
+      getCurrentUser: MockGetCurrentUser(),
+    );
   });
 
+  tearDown(() => bloc.close());
+
+  final testUser = TestData.testUser;
+
   blocTest<AuthBloc, AuthState>(
-    'emits [AuthLoading, AuthAuthenticated] when login succeeds',
+    'emits [AuthLoading, Authenticated] when login succeeds',
     build: () {
       when(() => mockLoginUser(any()))
           .thenAnswer((_) async => Right(testUser));
       return bloc;
     },
-    act: (bloc) => bloc.add(LoginRequested(
+    act: (bloc) => bloc.add(const LoginEvent(
       email: 'test@test.com',
       password: 'password',
     )),
     expect: () => [
       const AuthLoading(),
-      AuthAuthenticated(testUser),
+      Authenticated(testUser),
     ],
   );
 
@@ -1508,10 +1626,10 @@ void main() {
     'emits [AuthLoading, AuthError] when login fails',
     build: () {
       when(() => mockLoginUser(any()))
-          .thenAnswer((_) async => Left(ServerFailure(message: 'Error')));
+          .thenAnswer((_) async => const Left(ServerFailure(message: 'Error')));
       return bloc;
     },
-    act: (bloc) => bloc.add(LoginRequested(
+    act: (bloc) => bloc.add(const LoginEvent(
       email: 'test@test.com',
       password: 'wrong',
     )),
@@ -1535,9 +1653,14 @@ flutter test test/features/auth/domain/usecases/login_user_test.dart
 # Run with coverage
 flutter test --coverage
 
+# Browse coverage as HTML (needs coverage/lcov.info from the previous command)
+python3 scripts/generate_coverage_html.py
+
 # Run with verbose output
 flutter test --reporter expanded
 ```
+
+CI (`.github/workflows/`) runs code generation, `dart format --set-exit-if-changed lib/ test/`, `flutter analyze --fatal-infos` and `flutter test --coverage` on every push and PR to `main` and `develop`.
 
 ---
 
@@ -1548,9 +1671,9 @@ flutter test --reporter expanded
 | Command | Description |
 |---------|-------------|
 | `flutter pub get` | Install dependencies |
-| `flutter run` | Run app in debug mode |
-| `flutter run --release` | Run app in release mode |
-| `flutter run -d <device>` | Run on specific device |
+| `flutter run --dart-define-from-file=.env.dev` | Run app in debug mode |
+| `flutter run --release --dart-define-from-file=.env.dev` | Run app in release mode |
+| `flutter run -d <device> --dart-define-from-file=.env.dev` | Run on specific device |
 
 ### Code Generation
 
@@ -1565,24 +1688,29 @@ flutter test --reporter expanded
 |---------|-------------|
 | `flutter test` | Run all tests |
 | `flutter test --coverage` | Run tests with coverage |
+| `python3 scripts/generate_coverage_html.py` | Generate HTML coverage report from `coverage/lcov.info` |
 | `flutter test test/path/to/test.dart` | Run specific test |
 
 ### Analysis
 
 | Command | Description |
 |---------|-------------|
-| `flutter analyze` | Analyze code for issues |
-| `dart format .` | Format all Dart files |
+| `flutter analyze --fatal-infos` | Analyze code (same strictness as CI) |
+| `dart format lib test` | Format Dart files |
 | `flutter clean` | Clean build artifacts |
 
 ### Build
 
+Pass an environment file for each build, e.g. `.env.prod` with `{ "BASE_URL": "https://api.yourapp.com" }`:
+
 | Command | Description |
 |---------|-------------|
-| `flutter build apk` | Build Android APK |
-| `flutter build appbundle` | Build Android App Bundle |
-| `flutter build ios` | Build iOS |
-| `flutter build web` | Build Web |
+| `flutter build apk --dart-define-from-file=.env.prod` | Build Android APK |
+| `flutter build appbundle --dart-define-from-file=.env.prod` | Build Android App Bundle |
+| `flutter build ios --dart-define-from-file=.env.prod` | Build iOS |
+| `flutter build web --dart-define-from-file=.env.prod` | Build Web |
+
+Only `.env.*.example` files are committed. Keep real `.env.*` files out of git.
 
 ---
 
@@ -1603,7 +1731,7 @@ flutter test --reporter expanded
    )
    ```
 
-3. **Android** (`android/app/src/main/AndroidManifest.xml`):
+3. **Android** (`android/app/src/main/AndroidManifest.xml`, generated by `flutter create`):
    ```xml
    <application android:label="Your App Name" ...>
    ```
@@ -1616,15 +1744,20 @@ flutter test --reporter expanded
 
 ### Change API URL
 
-Edit `lib/core/constants/api_constants.dart`:
+Don't edit the code. Set `BASE_URL` in your env file and pass it at build or run time:
 
-```dart
-class ApiConstants {
-  static const String baseUrl = 'https://your-api.com/api/v1';
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+```json
+// .env.dev
+{
+  "BASE_URL": "https://dev-api.yourapp.com"
 }
 ```
+
+```bash
+flutter run --dart-define-from-file=.env.dev
+```
+
+`lib/core/constants/api_constants.dart` reads it with `String.fromEnvironment('BASE_URL', defaultValue: 'https://api.example.com')`. Endpoint paths (`/auth/login`, `/auth/refresh`, ...) and timeouts are also defined in that file.
 
 ### Change Colors
 
@@ -1692,16 +1825,19 @@ class ColorSchemeLight {
 > Generates immutable data classes with `copyWith`, `==`, `hashCode`, `toString`, and JSON serialization. Reduces boilerplate significantly.
 
 **Q: How do I handle authentication guards?**
-> Add guards in `app_router.dart`:
+> `AuthGuard` (`lib/config/routes/auth_guard.dart`) is registered in GetIt and injected into `AppRouter`. Add it to a route's `guards` list, or nest the route under `MainNavigationRoute`, which is already guarded:
 ```dart
 AutoRoute(
-  page: HomeRoute.page,
-  guards: [AuthGuard()],
+  page: ProductsRoute.page,
+  guards: [_authGuard],
 )
 ```
 
+**Q: Where are auth tokens stored? What happens when they expire?**
+> Tokens are stored in the Keychain/Keystore via `SecureCacheManager`, never in SharedPreferences. When a request returns 401, `DioClient` refreshes the token automatically and retries the request once. If the refresh fails, the tokens and pending sync operations are cleared.
+
 **Q: How do I add global error handling?**
-> Errors are already handled in `main.dart` using `runZonedGuarded`. Add custom logic there.
+> `main.dart` sets `FlutterError.onError`, which catches framework errors. Hook your crash reporter (Crashlytics, Sentry, ...) in there; there is a `TODO` at that spot. Errors from async code outside the framework are not captured yet. Add `PlatformDispatcher.instance.onError` if you need them.
 
 ---
 
