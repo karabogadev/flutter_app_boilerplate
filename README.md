@@ -78,6 +78,8 @@ dart run build_runner build --delete-conflicting-outputs
 cp .env.dev.example .env.dev
 ```
 
+> **Generated code is not committed.** `*.g.dart`, `*.freezed.dart` and `*.gr.dart` are in `.gitignore`, so a fresh clone, or a new app copied from this boilerplate, will not compile until you run `dart run build_runner build --delete-conflicting-outputs`. Run it again whenever you change a freezed/json model, a Hive type or a route. See [Troubleshooting](#troubleshooting) for what the missing files look like.
+
 `android/` and `ios/` are committed. They were generated with `flutter create --platforms=android,ios --org com.example .`; change the bundle identifiers before shipping (see [Customization](#change-app-name-and-bundle-id)).
 
 ### Running the App
@@ -659,7 +661,25 @@ Set `BASE_URL` in `.env.dev` / `.env.prod` and pass `--dart-define-from-file`. E
 
 ## Troubleshooting
 
-**Code generation fails or routes are missing**
+**Dozens of errors right after cloning or copying the project**
+
+Generated files are gitignored, so they don't exist yet. Typical errors:
+
+- `Target of URI doesn't exist: '.../app_router.gr.dart'`, `Target of URI hasn't been generated: '.../user_model.g.dart'`
+- `Undefined name 'SplashRoute'`, `The name 'LoginRoute' isn't a class`
+- `The method '_$UserModelFromJson' isn't defined`, `The name '_UserModel' isn't a type`
+- `The method 'SyncOperationAdapter' isn't defined`
+
+Generate them:
+
+```bash
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+```
+
+Starting a new app from this boilerplate? Run the same two commands in the new project right after copying it. If you also renamed the package in `pubspec.yaml`, update the `package:flutter_app_boilerplate/...` imports first.
+
+**Code generation fails or routes are still missing**
 
 ```bash
 flutter clean && flutter pub get
