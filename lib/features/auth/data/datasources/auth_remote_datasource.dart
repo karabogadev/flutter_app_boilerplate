@@ -41,7 +41,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       _postAuth(ApiConstants.register, {
         'email': email,
         'password': password,
-        if (name != null) 'name': name,
+        'name': ?name,
       });
 
   @override

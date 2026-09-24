@@ -111,7 +111,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: ValueListenableBuilder<int>(
                 valueListenable: _currentPage,
-                builder: (context, _, __) => AppButton.primary(
+                builder: (context, _, _) => AppButton.primary(
                   text: _isLastPage
                       ? LocaleKeys.onboardingGetStarted.tr()
                       : LocaleKeys.commonNext.tr(),
