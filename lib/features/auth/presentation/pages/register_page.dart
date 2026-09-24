@@ -1,16 +1,20 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../config/routes/app_router.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/extensions/context_extensions.dart';
-import '../../../../core/widgets/app_button.dart';
+import '../../../../core/localization/locale_keys.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../bloc/auth_bloc.dart';
-import '../bloc/auth_event.dart';
-import '../bloc/auth_state.dart';
+import '../widgets/auth_error_listener.dart';
+import '../widgets/auth_submit_button.dart';
 
+/// Navigation after a successful registration is handled by the app-level
+/// auth listener in `app.dart`.
 @RoutePage()
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -20,6 +24,8 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  static const _minPasswordLength = 6;
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -35,37 +41,48 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  void _onRegisterPressed() {
+  void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
+      final name = _nameController.text.trim();
       context.read<AuthBloc>().add(
             RegisterEvent(
               email: _emailController.text.trim(),
               password: _passwordController.text,
-              name: _nameController.text.trim().isNotEmpty
-                  ? _nameController.text.trim()
-                  : null,
+              name: name.isNotEmpty ? name : null,
             ),
           );
     }
   }
 
+  String? _validateEmail(String? value) => (value == null || value.isEmpty)
+      ? LocaleKeys.validationRequiredField.tr()
+      : null;
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return LocaleKeys.validationRequiredField.tr();
+    }
+    if (value.length < _minPasswordLength) {
+      return LocaleKeys.validationPasswordTooShort.tr();
+    }
+    return null;
+  }
+
+  String? _validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return LocaleKeys.validationRequiredField.tr();
+    }
+    if (value != _passwordController.text) {
+      return LocaleKeys.validationPasswordsDontMatch.tr();
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.router.maybePop(),
-        ),
-      ),
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is Authenticated) {
-            context.router.replaceAll([const MainNavigationRoute()]);
-          } else if (state is AuthError) {
-            context.showSnackBar(state.message, isError: true);
-          }
-        },
+      appBar: AppBar(),
+      body: AuthErrorListener(
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -74,100 +91,64 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Title
                   Text(
-                    'Create Account',
+                    LocaleKeys.authCreateAccount.tr(),
                     style: context.textTheme.headlineLarge,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Sign up to get started',
+                    LocaleKeys.authSignUpSubtitle.tr(),
                     style: context.textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.xl),
-
-                  // Name Field
                   AppTextField(
                     controller: _nameController,
-                    labelText: 'Name',
-                    hintText: 'Enter your name',
+                    labelText: LocaleKeys.authName.tr(),
+                    hintText: LocaleKeys.authNameHint.tr(),
                     prefixIcon: const Icon(Icons.person_outlined),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: AppSpacing.md),
-
-                  // Email Field
                   AppTextField.email(
                     controller: _emailController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      return null;
-                    },
+                    labelText: LocaleKeys.authEmail.tr(),
+                    hintText: LocaleKeys.authEmailHint.tr(),
+                    validator: _validateEmail,
                   ),
                   const SizedBox(height: AppSpacing.md),
-
-                  // Password Field
                   AppTextField.password(
                     controller: _passwordController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
+                    labelText: LocaleKeys.authPassword.tr(),
+                    hintText: LocaleKeys.authPasswordHint.tr(),
+                    validator: _validatePassword,
                   ),
                   const SizedBox(height: AppSpacing.md),
-
-                  // Confirm Password Field
                   AppTextField.password(
                     controller: _confirmPasswordController,
-                    labelText: 'Confirm Password',
-                    hintText: 'Confirm your password',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
+                    labelText: LocaleKeys.authConfirmPassword.tr(),
+                    hintText: LocaleKeys.authConfirmPasswordHint.tr(),
+                    validator: _validateConfirmPassword,
                   ),
                   const SizedBox(height: AppSpacing.xl),
-
-                  // Register Button
-                  BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      return AppButton.primary(
-                        text: 'Register',
-                        isExpanded: true,
-                        isLoading: state is AuthLoading,
-                        onPressed: _onRegisterPressed,
-                      );
-                    },
+                  AuthSubmitButton(
+                    text: LocaleKeys.authRegister.tr(),
+                    onPressed: _submit,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-
-                  // Login Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Already have an account?',
-                        style: context.textTheme.bodyMedium,
+                      Flexible(
+                        child: Text(
+                          LocaleKeys.authAlreadyHaveAccount.tr(),
+                          style: context.textTheme.bodyMedium,
+                        ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          context.router.maybePop();
-                        },
-                        child: const Text('Login'),
+                        onPressed: () => unawaited(context.router.maybePop()),
+                        child: Text(LocaleKeys.authLogin.tr()),
                       ),
                     ],
                   ),
